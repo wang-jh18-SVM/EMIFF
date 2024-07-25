@@ -33,8 +33,9 @@ class DAIR_VIC_Dataset(KittiDataset):
         rect = info['calib']['R0_rect'].astype(np.float32)
         Trv2c = info['calib']['Tr_velo_to_cam'].astype(np.float32)
         inf_Trv2c = info['calib']['inf_Tr_velo_to_cam'].astype(np.float32)
-        world2veh_lidar = info['calib']['world2veh_lidar'].astype(np.float32)
-        world2inf_lidar = info['calib']['world2inf_lidar'].astype(np.float32)
+        Tr_lidar_i2v = info['calib']['Tr_lidar_i2v'].astype(np.float32)
+        # world2veh_lidar = info['calib']['world2veh_lidar'].astype(np.float32)
+        # world2inf_lidar = info['calib']['world2inf_lidar'].astype(np.float32)
         P2 = info['calib']['P2'].astype(np.float32)
         P3 = info['calib']['P3'].astype(np.float32)
         
@@ -42,11 +43,14 @@ class DAIR_VIC_Dataset(KittiDataset):
         # embed(header='noise')
         # print(t_noise_range)
         t_noise = (np.array([np.random.normal(0, 1/3), np.random.normal(0, 1/3), 0.0]) * t_noise_range)
-        world2inf_lidar = self.trans_noise(world2inf_lidar, t_noise)
+        Tr_lidar_i2v = self.trans_noise(Tr_lidar_i2v, t_noise)
 
         veh_lidar2veh_cam = rect @ Trv2c
-        veh_lidar2world = np.linalg.inv(world2veh_lidar)
-        veh_lidar2inf_cam = rect @ inf_Trv2c @  world2inf_lidar @ veh_lidar2world
+        inf_lidar2inf_cam = rect @ inf_Trv2c
+        lidar_v2i = np.linalg.inv(Tr_lidar_i2v)
+        veh_lidar2inf_cam = lidar_v2i @ inf_lidar2inf_cam
+        # veh_lidar2world = np.linalg.inv(world2veh_lidar)
+        # veh_lidar2inf_cam = rect @ inf_Trv2c @  world2inf_lidar @ veh_lidar2world
         
         veh_intrinsic = np.copy(P2)
         inf_intrinsic = np.copy(P3)

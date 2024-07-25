@@ -460,7 +460,7 @@ def gen_calib2kitti_coop(source_root, target_root, label_type="lidar"):
         veh_frame = VehFrame(path + "/vehicle-side/", veh_frame)
         
         if not inf_frame["batch_id"] in inf_frames:
-                inf_frames[inf_frame["batch_id"]] = [inf_frame]
+            inf_frames[inf_frame["batch_id"]] = [inf_frame]
         else:
             inf_frames[inf_frame["batch_id"]].append(inf_frame)
         if not veh_frame["batch_id"] in veh_frames:

@@ -265,7 +265,7 @@ def get_label_lidar_rotation(lidar_3d_8_points):
 
 
 def label_world2vlidar(sub_root, idx):
-    path_input_label_file = os.path.join(sub_root, 'cooperative/label_world', idx + '.json')
+    path_input_label_file = os.path.join(sub_root, 'cooperative/label', idx + '.json')
     # path_output_label_dir = os.path.join(sub_root, 'cooperative/label/lidar')
     # if not os.path.exists(path_output_label_dir):
     #     os.makedirs(path_output_label_dir)
@@ -303,7 +303,7 @@ def label_world2vlidar(sub_root, idx):
 def gen_veh_lidar2veh_cam(source_root, target_root, label_type="lidar"):
 
     dair_v2x_c_root = source_root
-    c_jsons_path = os.path.join(dair_v2x_c_root, 'cooperative/data_info.json')
+    c_jsons_path = os.path.join(dair_v2x_c_root, 'cooperative/data_info_new.json')
     c_jsons = read_json(c_jsons_path)
     write_path = os.path.join(target_root, "label", label_type)
     mkdir_p(write_path)

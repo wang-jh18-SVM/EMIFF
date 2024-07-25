@@ -19,4 +19,5 @@ python -m torch.distributed.launch \
     $CONFIG \
     $CHECKPOINT \
     --launcher pytorch \
+    --out results.pkl \
     ${@:4}

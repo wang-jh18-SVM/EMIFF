@@ -265,26 +265,31 @@ def get_kitti_image_info(path,
                 float(info) for info in lines[5].split(' ')[1:13]
             ]).reshape([3, 4])
             inf_Tr_velo_to_cam = np.array([
-                float(info) for info in lines[6].split(' ')[1:13]
-            ]).reshape([3, 4])
-            world2veh_lidar = np.array([
                 float(info) for info in lines[7].split(' ')[1:13]
             ]).reshape([3, 4])
-            world2inf_lidar = np.array([
+            Tr_lidar_i2v = np.array([
                 float(info) for info in lines[8].split(' ')[1:13]
             ]).reshape([3, 4])
             
+            # world2veh_lidar = np.array([
+            #     float(info) for info in lines[7].split(' ')[1:13]
+            # ]).reshape([3, 4])
+            # world2inf_lidar = np.array([
+            #     float(info) for info in lines[8].split(' ')[1:13]
+            # ]).reshape([3, 4])
             
             # Tr_imu_to_velo = np.array([
             #     float(info) for info in lines[6].split(' ')[1:13]
             # ]).reshape([3, 4])
             
             
+            
             if extend_matrix:
                 veh_Tr_velo_to_cam = _extend_matrix(veh_Tr_velo_to_cam)
                 inf_Tr_velo_to_cam = _extend_matrix(inf_Tr_velo_to_cam)
-                world2veh_lidar = _extend_matrix(world2veh_lidar)
-                world2inf_lidar = _extend_matrix(world2inf_lidar)
+                Tr_lidar_i2v = _extend_matrix(Tr_lidar_i2v)
+                # world2veh_lidar = _extend_matrix(world2veh_lidar)
+                # world2inf_lidar = _extend_matrix(world2inf_lidar)
                 
                 # Tr_imu_to_velo = _extend_matrix(Tr_imu_to_velo)
             calib_info['P0'] = P0
@@ -294,8 +299,9 @@ def get_kitti_image_info(path,
             calib_info['R0_rect'] = rect_4x4
             calib_info['Tr_velo_to_cam'] = veh_Tr_velo_to_cam
             calib_info['inf_Tr_velo_to_cam'] = inf_Tr_velo_to_cam
-            calib_info['world2veh_lidar'] = world2veh_lidar
-            calib_info['world2inf_lidar'] = world2inf_lidar
+            calib_info['Tr_lidar_i2v'] = Tr_lidar_i2v
+            # calib_info['world2veh_lidar'] = world2veh_lidar
+            # calib_info['world2inf_lidar'] = world2inf_lidar
 
             # calib_info['Tr_imu_to_velo'] = Tr_imu_to_velo
             info['calib'] = calib_info

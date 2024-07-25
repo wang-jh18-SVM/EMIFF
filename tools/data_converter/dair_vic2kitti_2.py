@@ -6,17 +6,17 @@ from tools.data_converter.gen_kitti.gen_calib2kitti_coop import gen_calib2kitti_
 from gen_kitti.gen_ImageSets_from_split_data import gen_ImageSet_from_coop_split_data
 
 parser = argparse.ArgumentParser("Generate the Kitti Format Data")
-parser.add_argument("--source-root", type=str, default="./data/DAIR_V2X/cooperative-vehicle-infrastructure", help="Raw data root about DAIR-V2X.")
+parser.add_argument("--source-root", type=str, default="data/V2X-Seq-SPD", help="Raw data root about DAIR-V2X.")
 parser.add_argument(
     "--target-root",
     type=str,
-    default="./0623_vic_coop_v",
+    default="data/V2X-Seq-SPD-KITTI-CO",
     help="The data root where the data with kitti format is generated",
 )
 parser.add_argument(
     "--split-path",
     type=str,
-    default="data/split_datas/cooperative-split-data.json",
+    default="data/split_datas/cooperative-split-data-spd.json",
     help="Json file to split the data into training/validation/testing.",
 )
 parser.add_argument("--label-type", type=str, default="lidar", help="label type from ['lidar', 'camera']")

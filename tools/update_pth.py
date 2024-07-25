@@ -35,7 +35,7 @@ def update_backbone_vqvae_veh(model, filename, map_locaiton='cpu'):
     # embed(header='update')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # filename = '/home/wangz/wangzhe21/VIMI/work_dirs/0515_VIMI_VQVAE_960x540_12e_bs2x1/best_car_3d_0.5_epoch_10.pth'
-    filename = '/home/wangz/wangzhe21/VIMI/work_dirs/0711_VIMI_VQVAE_Veh_B2_960x540_12e_bs2x1/best_car_3d_0.5_epoch_11.pth'
+    filename = '/home/wangjiahao/workspace/EMIFF/work_dirs/0523_VIMI_Reproduction_960x540_12e_bs2x1/best_car_3d_0.5_epoch_9.pth'
     checkpoint = torch.load(filename, map_location = device)
     state_dict = checkpoint['state_dict']
 
@@ -55,7 +55,7 @@ def update_backbone_vqvae(model, filename, map_locaiton='cpu'):
     # embed(header='update')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # filename = '/home/wangz/wangzhe21/VIMI/work_dirs/0515_VIMI_VQVAE_960x540_12e_bs2x1/best_car_3d_0.5_epoch_10.pth'
-    filename = '/home/wangz/wangzhe21/VIMI/work_dirs/0711_VIMI_VQVAE_Veh_B2_960x540_12e_bs2x1/best_car_3d_0.5_epoch_11.pth'
+    filename = '/home/wangjiahao/workspace/EMIFF/work_dirs/0523_VIMI_Reproduction_960x540_12e_bs2x1/best_car_3d_0.5_epoch_9.pth'
     checkpoint = torch.load(filename, map_location = device)
     state_dict = checkpoint['state_dict']
 

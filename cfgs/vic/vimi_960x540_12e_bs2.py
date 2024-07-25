@@ -1,5 +1,5 @@
 dataset_type = 'DAIR_VIC_Dataset'
-data_root = 'data/1026_vic/'
+data_root = 'data/V2X-Seq-SPD-KITTI-CO/'
 class_names = ['Car']
 input_modality = dict(use_lidar=False, use_camera=True)
 point_cloud_range = [0, -39.68, -3, 92.16, 39.68, 1]
@@ -126,6 +126,9 @@ test_pipeline = [
     dict(type='DefaultFormatBundle3D', class_names=class_names, with_label=False),
     dict(type='Collect3D', keys=['img','gt_bboxes_3d', 'gt_labels_3d'])
 ]
+
+eval_pipeline = test_pipeline
+
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=4,
@@ -135,7 +138,7 @@ data = dict(
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file=data_root + 'dair_coop1214_infos_train.pkl',
+            ann_file=data_root + 'dair_vic_kitti_format_infos_train.pkl',
             split='training',
             pts_prefix='velodyne_reduced',
             pipeline=train_pipeline,
@@ -145,17 +148,17 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + 'dair_coop1214_infos_val.pkl',
+        ann_file=data_root + 'dair_vic_kitti_format_infos_val.pkl',
         split='training',
         pts_prefix='velodyne_reduced',
-        pipeline=test_pipeline,
+        pipeline=eval_pipeline,
         modality=input_modality,
         classes=class_names,
         test_mode=True),
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + 'dair_coop1214_infos_val.pkl',
+        ann_file=data_root + 'dair_vic_kitti_format_infos_val.pkl',
         split='training',
         pts_prefix='velodyne_reduced',
         pipeline=test_pipeline,
