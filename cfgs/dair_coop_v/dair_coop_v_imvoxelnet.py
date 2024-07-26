@@ -1,7 +1,7 @@
 dataset_type = 'KittiDataset'
-data_root = 'data/3_27_cooperative-vehicle-side-lidar/'
+data_root = 'data/V2X-Seq-SPD-KITTI/vehicle-side/'
 class_names = ['Car']
-input_modality = dict(use_lidar=False, use_camera=True)
+input_modality = dict(use_lidar=True, use_camera=True)
 point_cloud_range = [0, -39.68, -3, 92.16, 39.68, 1]
 voxel_size = [0.32, 0.32, 0.33]
 length = int((point_cloud_range[3] - point_cloud_range[0]) / voxel_size[0])
@@ -10,7 +10,7 @@ height = int((point_cloud_range[5] - point_cloud_range[2]) / voxel_size[2])
 output_shape = [width, length, height]
 img_norm_cfg = dict(
             mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-img_scale = (960, 540)
+img_scale = (1920, 1088)
 img_resize_scale = [(912, 513), (1008, 567)]
 
 work_dir = './work_dirs/vic3d_latefusion_inf_imvoxelnet'
@@ -100,6 +100,18 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='Resize', img_scale=img_scale, keep_ratio=True),
     dict(type='Normalize', **img_norm_cfg),
+    dict(type='Pad', size_divisor=32),
+    dict(
+        type='DefaultFormatBundle3D',
+        class_names=class_names,
+        with_label=False),
+    dict(type='Collect3D', keys=['img'])
+]
+
+eval_pipeline = [
+    dict(type='LoadImageFromFile'),
+    # dict(type='Resize', img_scale=img_scale, keep_ratio=True),
+    # dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(
         type='DefaultFormatBundle3D',

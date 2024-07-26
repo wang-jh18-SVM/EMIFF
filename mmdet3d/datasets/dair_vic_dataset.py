@@ -121,16 +121,9 @@ class DAIR_VIC_Dataset(KittiDataset):
         assert out_dir is not None, 'Expect out_dir, got none.'
         pipeline = self._get_pipeline(pipeline)
         for i, result in enumerate(results):
-            if 'pts_bbox' in result.keys():
-                result = result['pts_bbox']
             data_info = self.data_infos[i]
             pts_path = data_info['point_cloud']['velodyne_path']
             file_name = osp.split(pts_path)[-1].split('.')[0]
-            img_metas, img = self._extract_data(
-                i, pipeline, ['img_metas', 'img'])
-
-            # gt_bboxes = self.get_ann_info(i)['gt_bboxes_3d'].tensor.numpy()
-
             ids = list(['003150','004105','010813','010948','010989','011530','011867','013848','019940','019947','019981'])
             # ids = list(['011530','010813'])
             # ids = list(['011530'])
@@ -138,6 +131,14 @@ class DAIR_VIC_Dataset(KittiDataset):
                 print('file_name:',file_name)
             else:
                 continue
+
+            if 'pts_bbox' in result.keys():
+                result = result['pts_bbox']
+            img_metas, img = self._extract_data(
+                i, pipeline, ['img_metas', 'img'])
+
+            # gt_bboxes = self.get_ann_info(i)['gt_bboxes_3d'].tensor.numpy()
+
             # from IPython import embed
             # embed(header='gt_bboxes')
 

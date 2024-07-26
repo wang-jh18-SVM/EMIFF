@@ -11,7 +11,8 @@ height = int((point_cloud_range[5] - point_cloud_range[2]) / voxel_size[2])
 output_shape = [width, length, height]
 img_norm_cfg = dict(
             mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-img_scale = (960, 540)
+img_scale = (1920, 1088)
+# img_scale = (960, 540)
 img_resize_scale = [(912, 513), (1008, 567)]
 
 _dim_ = 64
@@ -168,7 +169,7 @@ data = dict(
 
 optimizer = dict(
     type='AdamW',
-    lr=0.0001,
+    lr=0.00005,
     weight_decay=0.0001,
     paramwise_cfg=dict(
         custom_keys=dict(backbone=dict(lr_mult=0.1, decay_mult=1.0))))
@@ -178,12 +179,18 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = '0523_VIMI_Reproduction_960x540_12e_bs2x1'
+run_name = '0726_EMIFF_1920x1088_12e_bs2x4_lr5e-5'
 wandb_init_dict = dict(
     type='WandbLoggerHook',
+    # type='MMDetWandbHook',
     init_kwargs = dict(
         project='VIMI',
-        name=run_name))
+        name=run_name
+        ),
+    # log_checkpoint=True,
+    # log_checkpoint_metadata=True,
+    # num_eval_images=4
+    )
 log_config = dict(
     interval=50,
     hooks=[dict(type='TextLoggerHook'),
