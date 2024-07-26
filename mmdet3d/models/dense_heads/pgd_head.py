@@ -55,30 +55,30 @@ class PGDHead(FCOSMono3DHead):
             code_size=7).
     """
 
-    def __init__(self,
-                 use_depth_classifier=True,
-                 use_onlyreg_proj=False,
-                 weight_dim=-1,
-                 weight_branch=((256, ), ),
-                 depth_branch=(64, ),
-                 depth_range=(0, 70),
-                 depth_unit=10,
-                 division='uniform',
-                 depth_bins=8,
-                 loss_depth=dict(
-                     type='SmoothL1Loss', beta=1.0 / 9.0, loss_weight=1.0),
-                 loss_bbox2d=dict(
-                     type='SmoothL1Loss', beta=1.0 / 9.0, loss_weight=1.0),
-                 loss_consistency=dict(type='GIoULoss', loss_weight=1.0),
-                 pred_bbox2d=True,
-                 pred_keypoints=False,
-                 bbox_coder=dict(
-                     type='PGDBBoxCoder',
-                     base_depths=((28.01, 16.32), ),
-                     base_dims=((0.8, 1.73, 0.6), (1.76, 1.73, 0.6),
-                                (3.9, 1.56, 1.6)),
-                     code_size=7),
-                 **kwargs):
+    def __init__(
+        self,
+        use_depth_classifier=True,
+        use_onlyreg_proj=False,
+        weight_dim=-1,
+        weight_branch=((256,),),
+        depth_branch=(64,),
+        depth_range=(0, 70),
+        depth_unit=10,
+        division="uniform",
+        depth_bins=8,
+        loss_depth=dict(type="SmoothL1Loss", beta=1.0 / 9.0, loss_weight=1.0),
+        loss_bbox2d=dict(type="SmoothL1Loss", beta=1.0 / 9.0, loss_weight=1.0),
+        loss_consistency=dict(type="GIoULoss", loss_weight=1.0),
+        pred_bbox2d=True,
+        pred_keypoints=False,
+        bbox_coder=dict(
+            type="PGDBBoxCoder",
+            base_depths=((28.01, 16.32),),
+            base_dims=((0.8, 1.73, 0.6), (1.76, 1.73, 0.6), (3.9, 1.56, 1.6)),
+            code_size=7,
+        ),
+        **kwargs,
+    ):
         self.use_depth_classifier = use_depth_classifier
         self.use_onlyreg_proj = use_onlyreg_proj
         self.depth_branch = depth_branch
@@ -94,18 +94,18 @@ class PGDHead(FCOSMono3DHead):
         self.depth_range = depth_range
         self.depth_unit = depth_unit
         self.division = division
-        if self.division == 'uniform':
-            self.num_depth_cls = int(
-                (depth_range[1] - depth_range[0]) / depth_unit) + 1
+        if self.division == "uniform":
+            self.num_depth_cls = int((depth_range[1] - depth_range[0]) / depth_unit) + 1
             if self.num_depth_cls != depth_bins:
-                print('Warning: The number of bins computed from ' +
-                      'depth_unit is different from given parameter! ' +
-                      'Depth_unit will be considered with priority in ' +
-                      'Uniform Division.')
+                print(
+                    "Warning: The number of bins computed from "
+                    + "depth_unit is different from given parameter! "
+                    + "Depth_unit will be considered with priority in "
+                    + "Uniform Division."
+                )
         else:
             self.num_depth_cls = depth_bins
-        super().__init__(
-            pred_bbox2d=pred_bbox2d, bbox_coder=bbox_coder, **kwargs)
+        super().__init__(pred_bbox2d=pred_bbox2d, bbox_coder=bbox_coder, **kwargs)
         self.loss_depth = build_loss(loss_depth)
         if self.pred_bbox2d:
             self.loss_bbox2d = build_loss(loss_bbox2d)
@@ -120,10 +120,12 @@ class PGDHead(FCOSMono3DHead):
             self.scale_dim += 1
         if self.pred_keypoints:
             self.scale_dim += 1
-        self.scales = nn.ModuleList([
-            nn.ModuleList([Scale(1.0) for _ in range(self.scale_dim)])
-            for _ in self.strides
-        ])
+        self.scales = nn.ModuleList(
+            [
+                nn.ModuleList([Scale(1.0) for _ in range(self.scale_dim)])
+                for _ in self.strides
+            ]
+        )
 
     def _init_predictor(self):
         """Initialize predictor layers of the head."""
@@ -132,9 +134,11 @@ class PGDHead(FCOSMono3DHead):
         if self.use_depth_classifier:
             self.conv_depth_cls_prev = self._init_branch(
                 conv_channels=self.depth_branch,
-                conv_strides=(1, ) * len(self.depth_branch))
-            self.conv_depth_cls = nn.Conv2d(self.depth_branch[-1],
-                                            self.num_depth_cls, 1)
+                conv_strides=(1,) * len(self.depth_branch),
+            )
+            self.conv_depth_cls = nn.Conv2d(
+                self.depth_branch[-1], self.num_depth_cls, 1
+            )
             # Data-agnostic single param lambda for local depth fusion
             self.fuse_lambda = nn.Parameter(torch.tensor(10e-5))
 
@@ -148,13 +152,13 @@ class PGDHead(FCOSMono3DHead):
                     self.conv_weight_prevs.append(
                         self._init_branch(
                             conv_channels=weight_branch_channels,
-                            conv_strides=(1, ) * len(weight_branch_channels)))
-                    self.conv_weights.append(
-                        nn.Conv2d(weight_out_channel, 1, 1))
+                            conv_strides=(1,) * len(weight_branch_channels),
+                        )
+                    )
+                    self.conv_weights.append(nn.Conv2d(weight_out_channel, 1, 1))
                 else:
                     self.conv_weight_prevs.append(None)
-                    self.conv_weights.append(
-                        nn.Conv2d(self.feat_channels, 1, 1))
+                    self.conv_weights.append(nn.Conv2d(self.feat_channels, 1, 1))
 
     def init_weights(self):
         """Initialize weights of the head.
@@ -212,8 +216,7 @@ class PGDHead(FCOSMono3DHead):
                 centernesses (list[Tensor]): Centerness for each scale level,
                     each is a 4D-tensor, the channel number is num_points * 1.
         """
-        return multi_apply(self.forward_single, feats, self.scales,
-                           self.strides)
+        return multi_apply(self.forward_single, feats, self.scales, self.strides)
 
     def forward_single(self, x, scale, stride):
         """Forward features of a single scale level.
@@ -231,15 +234,26 @@ class PGDHead(FCOSMono3DHead):
                 predictions, depth class predictions, location-aware weights,
                 attribute and centerness predictions of input feature maps.
         """
-        cls_score, bbox_pred, dir_cls_pred, attr_pred, centerness, cls_feat, \
-            reg_feat = super().forward_single(x, scale, stride)
+        (
+            cls_score,
+            bbox_pred,
+            dir_cls_pred,
+            attr_pred,
+            centerness,
+            cls_feat,
+            reg_feat,
+        ) = super().forward_single(x, scale, stride)
 
-        max_regress_range = stride * self.regress_ranges[0][1] / \
-            self.strides[0]
-        bbox_pred = self.bbox_coder.decode_2d(bbox_pred, scale, stride,
-                                              max_regress_range, self.training,
-                                              self.pred_keypoints,
-                                              self.pred_bbox2d)
+        max_regress_range = stride * self.regress_ranges[0][1] / self.strides[0]
+        bbox_pred = self.bbox_coder.decode_2d(
+            bbox_pred,
+            scale,
+            stride,
+            max_regress_range,
+            self.training,
+            self.pred_keypoints,
+            self.pred_bbox2d,
+        )
 
         depth_cls_pred = None
         if self.use_depth_classifier:
@@ -259,21 +273,30 @@ class PGDHead(FCOSMono3DHead):
                 weight.append(self.conv_weights[i](clone_reg_feat))
             weight = torch.cat(weight, dim=1)
 
-        return cls_score, bbox_pred, dir_cls_pred, depth_cls_pred, weight, \
-            attr_pred, centerness
+        return (
+            cls_score,
+            bbox_pred,
+            dir_cls_pred,
+            depth_cls_pred,
+            weight,
+            attr_pred,
+            centerness,
+        )
 
-    def get_proj_bbox2d(self,
-                        bbox_preds,
-                        pos_dir_cls_preds,
-                        labels_3d,
-                        bbox_targets_3d,
-                        pos_points,
-                        pos_inds,
-                        img_metas,
-                        pos_depth_cls_preds=None,
-                        pos_weights=None,
-                        pos_cls_scores=None,
-                        with_kpts=False):
+    def get_proj_bbox2d(
+        self,
+        bbox_preds,
+        pos_dir_cls_preds,
+        labels_3d,
+        bbox_targets_3d,
+        pos_points,
+        pos_inds,
+        img_metas,
+        pos_depth_cls_preds=None,
+        pos_weights=None,
+        pos_cls_scores=None,
+        with_kpts=False,
+    ):
         """Decode box predictions and get projected 2D attributes.
 
         Args:
@@ -309,13 +332,12 @@ class PGDHead(FCOSMono3DHead):
             tuple[Tensor]: Exterior 2D boxes from projected 3D boxes,
                 predicted 2D boxes and keypoint targets (if necessary).
         """
-        views = [np.array(img_meta['cam2img']) for img_meta in img_metas]
+        views = [np.array(img_meta["cam2img"]) for img_meta in img_metas]
         num_imgs = len(img_metas)
         img_idx = []
         for label in labels_3d:
             for idx in range(num_imgs):
-                img_idx.append(
-                    labels_3d[0].new_ones(int(len(label) / num_imgs)) * idx)
+                img_idx.append(labels_3d[0].new_ones(int(len(label) / num_imgs)) * idx)
         img_idx = torch.cat(img_idx)
         pos_img_idx = img_idx[pos_inds]
 
@@ -326,11 +348,13 @@ class PGDHead(FCOSMono3DHead):
 
         for stride_idx, bbox_pred in enumerate(bbox_preds):
             flatten_bbox_pred = bbox_pred.permute(0, 2, 3, 1).reshape(
-                -1, sum(self.group_reg_dims))
+                -1, sum(self.group_reg_dims)
+            )
             flatten_bbox_pred[:, :2] *= self.strides[stride_idx]
             flatten_bbox_pred[:, -4:] *= self.strides[stride_idx]
             flatten_strided_bbox_preds.append(
-                flatten_bbox_pred[:, :self.bbox_coder.bbox_code_size])
+                flatten_bbox_pred[:, : self.bbox_coder.bbox_code_size]
+            )
             flatten_strided_bbox2d_preds.append(flatten_bbox_pred[:, -4:])
 
             bbox_target_3d = bbox_targets_3d[stride_idx].clone()
@@ -338,8 +362,10 @@ class PGDHead(FCOSMono3DHead):
             bbox_target_3d[:, -4:] *= self.strides[stride_idx]
             flatten_bbox_targets_3d.append(bbox_target_3d)
 
-            flatten_stride = flatten_bbox_pred.new_ones(
-                *flatten_bbox_pred.shape[:-1], 1) * self.strides[stride_idx]
+            flatten_stride = (
+                flatten_bbox_pred.new_ones(*flatten_bbox_pred.shape[:-1], 1)
+                * self.strides[stride_idx]
+            )
             flatten_strides.append(flatten_stride)
 
         flatten_strided_bbox_preds = torch.cat(flatten_strided_bbox_preds)
@@ -351,75 +377,88 @@ class PGDHead(FCOSMono3DHead):
         pos_bbox_targets_3d = flatten_bbox_targets_3d[pos_inds]
         pos_strides = flatten_strides[pos_inds]
 
-        pos_decoded_bbox2d_preds = distance2bbox(pos_points,
-                                                 pos_strided_bbox2d_preds)
+        pos_decoded_bbox2d_preds = distance2bbox(pos_points, pos_strided_bbox2d_preds)
 
-        pos_strided_bbox_preds[:, :2] = \
-            pos_points - pos_strided_bbox_preds[:, :2]
-        pos_bbox_targets_3d[:, :2] = \
-            pos_points - pos_bbox_targets_3d[:, :2]
+        pos_strided_bbox_preds[:, :2] = pos_points - pos_strided_bbox_preds[:, :2]
+        pos_bbox_targets_3d[:, :2] = pos_points - pos_bbox_targets_3d[:, :2]
 
         if self.use_depth_classifier and (not self.use_onlyreg_proj):
             pos_prob_depth_preds = self.bbox_coder.decode_prob_depth(
-                pos_depth_cls_preds, self.depth_range, self.depth_unit,
-                self.division, self.num_depth_cls)
+                pos_depth_cls_preds,
+                self.depth_range,
+                self.depth_unit,
+                self.division,
+                self.num_depth_cls,
+            )
             sig_alpha = torch.sigmoid(self.fuse_lambda)
-            pos_strided_bbox_preds[:, 2] = \
-                sig_alpha * pos_strided_bbox_preds.clone()[:, 2] + \
-                (1 - sig_alpha) * pos_prob_depth_preds
+            pos_strided_bbox_preds[:, 2] = (
+                sig_alpha * pos_strided_bbox_preds.clone()[:, 2]
+                + (1 - sig_alpha) * pos_prob_depth_preds
+            )
 
         box_corners_in_image = pos_strided_bbox_preds.new_zeros(
-            (*pos_strided_bbox_preds.shape[:-1], 8, 2))
+            (*pos_strided_bbox_preds.shape[:-1], 8, 2)
+        )
         box_corners_in_image_gt = pos_strided_bbox_preds.new_zeros(
-            (*pos_strided_bbox_preds.shape[:-1], 8, 2))
+            (*pos_strided_bbox_preds.shape[:-1], 8, 2)
+        )
 
         for idx in range(num_imgs):
-            mask = (pos_img_idx == idx)
+            mask = pos_img_idx == idx
             if pos_strided_bbox_preds[mask].shape[0] == 0:
                 continue
             cam2img = torch.eye(
                 4,
                 dtype=pos_strided_bbox_preds.dtype,
-                device=pos_strided_bbox_preds.device)
+                device=pos_strided_bbox_preds.device,
+            )
             view_shape = views[idx].shape
-            cam2img[:view_shape[0], :view_shape[1]] = \
-                pos_strided_bbox_preds.new_tensor(views[idx])
+            cam2img[
+                : view_shape[0], : view_shape[1]
+            ] = pos_strided_bbox_preds.new_tensor(views[idx])
 
             centers2d_preds = pos_strided_bbox_preds.clone()[mask, :2]
             centers2d_targets = pos_bbox_targets_3d.clone()[mask, :2]
-            centers3d_targets = points_img2cam(pos_bbox_targets_3d[mask, :3],
-                                               views[idx])
+            centers3d_targets = points_img2cam(
+                pos_bbox_targets_3d[mask, :3], views[idx]
+            )
 
             # use predicted depth to re-project the 2.5D centers
             pos_strided_bbox_preds[mask, :3] = points_img2cam(
-                pos_strided_bbox_preds[mask, :3], views[idx])
+                pos_strided_bbox_preds[mask, :3], views[idx]
+            )
             pos_bbox_targets_3d[mask, :3] = centers3d_targets
 
             # depth fixed when computing re-project 3D bboxes
-            pos_strided_bbox_preds[mask, 2] = \
-                pos_bbox_targets_3d.clone()[mask, 2]
+            pos_strided_bbox_preds[mask, 2] = pos_bbox_targets_3d.clone()[mask, 2]
 
             # decode yaws
             if self.use_direction_classifier:
-                pos_dir_cls_scores = torch.max(
-                    pos_dir_cls_preds[mask], dim=-1)[1]
+                pos_dir_cls_scores = torch.max(pos_dir_cls_preds[mask], dim=-1)[1]
                 pos_strided_bbox_preds[mask] = self.bbox_coder.decode_yaw(
-                    pos_strided_bbox_preds[mask], centers2d_preds,
-                    pos_dir_cls_scores, self.dir_offset, cam2img)
-            pos_bbox_targets_3d[mask, 6] = torch.atan2(
-                centers2d_targets[:, 0] - cam2img[0, 2],
-                cam2img[0, 0]) + pos_bbox_targets_3d[mask, 6]
+                    pos_strided_bbox_preds[mask],
+                    centers2d_preds,
+                    pos_dir_cls_scores,
+                    self.dir_offset,
+                    cam2img,
+                )
+            pos_bbox_targets_3d[mask, 6] = (
+                torch.atan2(centers2d_targets[:, 0] - cam2img[0, 2], cam2img[0, 0])
+                + pos_bbox_targets_3d[mask, 6]
+            )
 
-            corners = img_metas[0]['box_type_3d'](
+            corners = img_metas[0]["box_type_3d"](
                 pos_strided_bbox_preds[mask],
                 box_dim=self.bbox_coder.bbox_code_size,
-                origin=(0.5, 0.5, 0.5)).corners
+                origin=(0.5, 0.5, 0.5),
+            ).corners
             box_corners_in_image[mask] = points_cam2img(corners, cam2img)
 
-            corners_gt = img_metas[0]['box_type_3d'](
-                pos_bbox_targets_3d[mask, :self.bbox_code_size],
+            corners_gt = img_metas[0]["box_type_3d"](
+                pos_bbox_targets_3d[mask, : self.bbox_code_size],
                 box_dim=self.bbox_coder.bbox_code_size,
-                origin=(0.5, 0.5, 0.5)).corners
+                origin=(0.5, 0.5, 0.5),
+            ).corners
             box_corners_in_image_gt[mask] = points_cam2img(corners_gt, cam2img)
 
         minxy = torch.min(box_corners_in_image, dim=1)[0]
@@ -429,20 +468,26 @@ class PGDHead(FCOSMono3DHead):
         outputs = (proj_bbox2d_preds, pos_decoded_bbox2d_preds)
 
         if with_kpts:
-            norm_strides = pos_strides * self.regress_ranges[0][1] / \
-                self.strides[0]
+            norm_strides = pos_strides * self.regress_ranges[0][1] / self.strides[0]
             kpts_targets = box_corners_in_image_gt - pos_points[..., None, :]
-            kpts_targets = kpts_targets.view(
-                (*pos_strided_bbox_preds.shape[:-1], 16))
+            kpts_targets = kpts_targets.view((*pos_strided_bbox_preds.shape[:-1], 16))
             kpts_targets /= norm_strides
 
-            outputs += (kpts_targets, )
+            outputs += (kpts_targets,)
 
         return outputs
 
-    def get_pos_predictions(self, bbox_preds, dir_cls_preds, depth_cls_preds,
-                            weights, attr_preds, centernesses, pos_inds,
-                            img_metas):
+    def get_pos_predictions(
+        self,
+        bbox_preds,
+        dir_cls_preds,
+        depth_cls_preds,
+        weights,
+        attr_preds,
+        centernesses,
+        pos_inds,
+        img_metas,
+    ):
         """Flatten predictions and get positive ones.
 
         Args:
@@ -479,8 +524,7 @@ class PGDHead(FCOSMono3DHead):
             for dir_cls_pred in dir_cls_preds
         ]
         flatten_centerness = [
-            centerness.permute(0, 2, 3, 1).reshape(-1)
-            for centerness in centernesses
+            centerness.permute(0, 2, 3, 1).reshape(-1) for centerness in centernesses
         ]
         flatten_bbox_preds = torch.cat(flatten_bbox_preds)
         flatten_dir_cls_preds = torch.cat(flatten_dir_cls_preds)
@@ -492,8 +536,7 @@ class PGDHead(FCOSMono3DHead):
         pos_depth_cls_preds = None
         if self.use_depth_classifier:
             flatten_depth_cls_preds = [
-                depth_cls_pred.permute(0, 2, 3,
-                                       1).reshape(-1, self.num_depth_cls)
+                depth_cls_pred.permute(0, 2, 3, 1).reshape(-1, self.num_depth_cls)
                 for depth_cls_pred in depth_cls_preds
             ]
             flatten_depth_cls_preds = torch.cat(flatten_depth_cls_preds)
@@ -517,29 +560,45 @@ class PGDHead(FCOSMono3DHead):
             flatten_attr_preds = torch.cat(flatten_attr_preds)
             pos_attr_preds = flatten_attr_preds[pos_inds]
 
-        return pos_bbox_preds, pos_dir_cls_preds, pos_depth_cls_preds, \
-            pos_weights, pos_attr_preds, pos_centerness
+        return (
+            pos_bbox_preds,
+            pos_dir_cls_preds,
+            pos_depth_cls_preds,
+            pos_weights,
+            pos_attr_preds,
+            pos_centerness,
+        )
 
     @force_fp32(
-        apply_to=('cls_scores', 'bbox_preds', 'dir_cls_preds',
-                  'depth_cls_preds', 'weights', 'attr_preds', 'centernesses'))
-    def loss(self,
-             cls_scores,
-             bbox_preds,
-             dir_cls_preds,
-             depth_cls_preds,
-             weights,
-             attr_preds,
-             centernesses,
-             gt_bboxes,
-             gt_labels,
-             gt_bboxes_3d,
-             gt_labels_3d,
-             centers2d,
-             depths,
-             attr_labels,
-             img_metas,
-             gt_bboxes_ignore=None):
+        apply_to=(
+            "cls_scores",
+            "bbox_preds",
+            "dir_cls_preds",
+            "depth_cls_preds",
+            "weights",
+            "attr_preds",
+            "centernesses",
+        )
+    )
+    def loss(
+        self,
+        cls_scores,
+        bbox_preds,
+        dir_cls_preds,
+        depth_cls_preds,
+        weights,
+        attr_preds,
+        centernesses,
+        gt_bboxes,
+        gt_labels,
+        gt_bboxes_3d,
+        gt_labels_3d,
+        centers2d,
+        depths,
+        attr_labels,
+        img_metas,
+        gt_bboxes_ignore=None,
+    ):
         """Compute loss of the head.
 
         Args:
@@ -582,20 +641,35 @@ class PGDHead(FCOSMono3DHead):
         Returns:
             dict[str, Tensor]: A dictionary of loss components.
         """
-        assert len(cls_scores) == len(bbox_preds) == len(dir_cls_preds) == \
-            len(depth_cls_preds) == len(weights) == len(centernesses) == \
-            len(attr_preds), 'The length of cls_scores, bbox_preds, ' \
-            'dir_cls_preds, depth_cls_preds, weights, centernesses, and' \
-            f'attr_preds: {len(cls_scores)}, {len(bbox_preds)}, ' \
-            f'{len(dir_cls_preds)}, {len(depth_cls_preds)}, {len(weights)}' \
-            f'{len(centernesses)}, {len(attr_preds)} are inconsistent.'
+        assert (
+            len(cls_scores)
+            == len(bbox_preds)
+            == len(dir_cls_preds)
+            == len(depth_cls_preds)
+            == len(weights)
+            == len(centernesses)
+            == len(attr_preds)
+        ), (
+            "The length of cls_scores, bbox_preds, "
+            "dir_cls_preds, depth_cls_preds, weights, centernesses, and"
+            f"attr_preds: {len(cls_scores)}, {len(bbox_preds)}, "
+            f"{len(dir_cls_preds)}, {len(depth_cls_preds)}, {len(weights)}"
+            f"{len(centernesses)}, {len(attr_preds)} are inconsistent."
+        )
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
-        all_level_points = self.get_points(featmap_sizes, bbox_preds[0].dtype,
-                                           bbox_preds[0].device)
-        labels_3d, bbox_targets_3d, centerness_targets, attr_targets = \
-            self.get_targets(
-                all_level_points, gt_bboxes, gt_labels, gt_bboxes_3d,
-                gt_labels_3d, centers2d, depths, attr_labels)
+        all_level_points = self.get_points(
+            featmap_sizes, bbox_preds[0].dtype, bbox_preds[0].device
+        )
+        labels_3d, bbox_targets_3d, centerness_targets, attr_targets = self.get_targets(
+            all_level_points,
+            gt_bboxes,
+            gt_labels,
+            gt_bboxes_3d,
+            gt_labels_3d,
+            centers2d,
+            depths,
+            attr_labels,
+        )
 
         num_imgs = cls_scores[0].size(0)
         # flatten cls_scores and targets
@@ -608,27 +682,43 @@ class PGDHead(FCOSMono3DHead):
         flatten_bbox_targets_3d = torch.cat(bbox_targets_3d)
         flatten_centerness_targets = torch.cat(centerness_targets)
         flatten_points = torch.cat(
-            [points.repeat(num_imgs, 1) for points in all_level_points])
+            [points.repeat(num_imgs, 1) for points in all_level_points]
+        )
         if self.pred_attrs:
             flatten_attr_targets = torch.cat(attr_targets)
 
         # FG cat_id: [0, num_classes -1], BG cat_id: num_classes
         bg_class_ind = self.num_classes
-        pos_inds = ((flatten_labels_3d >= 0)
-                    & (flatten_labels_3d < bg_class_ind)).nonzero().reshape(-1)
+        pos_inds = (
+            ((flatten_labels_3d >= 0) & (flatten_labels_3d < bg_class_ind))
+            .nonzero()
+            .reshape(-1)
+        )
         num_pos = len(pos_inds)
 
         loss_dict = dict()
 
-        loss_dict['loss_cls'] = self.loss_cls(
-            flatten_cls_scores,
-            flatten_labels_3d,
-            avg_factor=num_pos + num_imgs)  # avoid num_pos is 0
+        loss_dict["loss_cls"] = self.loss_cls(
+            flatten_cls_scores, flatten_labels_3d, avg_factor=num_pos + num_imgs
+        )  # avoid num_pos is 0
 
-        pos_bbox_preds, pos_dir_cls_preds, pos_depth_cls_preds, pos_weights, \
-            pos_attr_preds, pos_centerness = self.get_pos_predictions(
-                bbox_preds, dir_cls_preds, depth_cls_preds, weights,
-                attr_preds, centernesses, pos_inds, img_metas)
+        (
+            pos_bbox_preds,
+            pos_dir_cls_preds,
+            pos_depth_cls_preds,
+            pos_weights,
+            pos_attr_preds,
+            pos_centerness,
+        ) = self.get_pos_predictions(
+            bbox_preds,
+            dir_cls_preds,
+            depth_cls_preds,
+            weights,
+            attr_preds,
+            centernesses,
+            pos_inds,
+            img_metas,
+        )
 
         if num_pos > 0:
             pos_bbox_targets_3d = flatten_bbox_targets_3d[pos_inds]
@@ -638,171 +728,211 @@ class PGDHead(FCOSMono3DHead):
                 pos_attr_targets = flatten_attr_targets[pos_inds]
             if self.use_direction_classifier:
                 pos_dir_cls_targets = self.get_direction_target(
-                    pos_bbox_targets_3d, self.dir_offset, one_hot=False)
+                    pos_bbox_targets_3d, self.dir_offset, one_hot=False
+                )
 
             bbox_weights = pos_centerness_targets.new_ones(
-                len(pos_centerness_targets), sum(self.group_reg_dims))
+                len(pos_centerness_targets), sum(self.group_reg_dims)
+            )
             equal_weights = pos_centerness_targets.new_ones(
-                pos_centerness_targets.shape)
-            code_weight = self.train_cfg.get('code_weight', None)
+                pos_centerness_targets.shape
+            )
+            code_weight = self.train_cfg.get("code_weight", None)
             if code_weight:
                 assert len(code_weight) == sum(self.group_reg_dims)
-                bbox_weights = bbox_weights * bbox_weights.new_tensor(
-                    code_weight)
+                bbox_weights = bbox_weights * bbox_weights.new_tensor(code_weight)
 
             if self.diff_rad_by_sin:
                 pos_bbox_preds, pos_bbox_targets_3d = self.add_sin_difference(
-                    pos_bbox_preds, pos_bbox_targets_3d)
+                    pos_bbox_preds, pos_bbox_targets_3d
+                )
 
-            loss_dict['loss_offset'] = self.loss_bbox(
+            loss_dict["loss_offset"] = self.loss_bbox(
                 pos_bbox_preds[:, :2],
                 pos_bbox_targets_3d[:, :2],
                 weight=bbox_weights[:, :2],
-                avg_factor=equal_weights.sum())
-            loss_dict['loss_size'] = self.loss_bbox(
+                avg_factor=equal_weights.sum(),
+            )
+            loss_dict["loss_size"] = self.loss_bbox(
                 pos_bbox_preds[:, 3:6],
                 pos_bbox_targets_3d[:, 3:6],
                 weight=bbox_weights[:, 3:6],
-                avg_factor=equal_weights.sum())
-            loss_dict['loss_rotsin'] = self.loss_bbox(
+                avg_factor=equal_weights.sum(),
+            )
+            loss_dict["loss_rotsin"] = self.loss_bbox(
                 pos_bbox_preds[:, 6],
                 pos_bbox_targets_3d[:, 6],
                 weight=bbox_weights[:, 6],
-                avg_factor=equal_weights.sum())
+                avg_factor=equal_weights.sum(),
+            )
             if self.pred_velo:
-                loss_dict['loss_velo'] = self.loss_bbox(
+                loss_dict["loss_velo"] = self.loss_bbox(
                     pos_bbox_preds[:, 7:9],
                     pos_bbox_targets_3d[:, 7:9],
                     weight=bbox_weights[:, 7:9],
-                    avg_factor=equal_weights.sum())
+                    avg_factor=equal_weights.sum(),
+                )
 
-            proj_bbox2d_inputs = (bbox_preds, pos_dir_cls_preds, labels_3d,
-                                  bbox_targets_3d, pos_points, pos_inds,
-                                  img_metas)
+            proj_bbox2d_inputs = (
+                bbox_preds,
+                pos_dir_cls_preds,
+                labels_3d,
+                bbox_targets_3d,
+                pos_points,
+                pos_inds,
+                img_metas,
+            )
 
             # direction classification loss
             # TODO: add more check for use_direction_classifier
             if self.use_direction_classifier:
-                loss_dict['loss_dir'] = self.loss_dir(
+                loss_dict["loss_dir"] = self.loss_dir(
                     pos_dir_cls_preds,
                     pos_dir_cls_targets,
                     equal_weights,
-                    avg_factor=equal_weights.sum())
+                    avg_factor=equal_weights.sum(),
+                )
 
             # init depth loss with the one computed from direct regression
-            loss_dict['loss_depth'] = self.loss_bbox(
+            loss_dict["loss_depth"] = self.loss_bbox(
                 pos_bbox_preds[:, 2],
                 pos_bbox_targets_3d[:, 2],
                 weight=bbox_weights[:, 2],
-                avg_factor=equal_weights.sum())
+                avg_factor=equal_weights.sum(),
+            )
             # depth classification loss
             if self.use_depth_classifier:
                 pos_prob_depth_preds = self.bbox_coder.decode_prob_depth(
-                    pos_depth_cls_preds, self.depth_range, self.depth_unit,
-                    self.division, self.num_depth_cls)
+                    pos_depth_cls_preds,
+                    self.depth_range,
+                    self.depth_unit,
+                    self.division,
+                    self.num_depth_cls,
+                )
                 sig_alpha = torch.sigmoid(self.fuse_lambda)
                 if self.weight_dim != -1:
                     loss_fuse_depth = self.loss_depth(
-                        sig_alpha * pos_bbox_preds[:, 2] +
-                        (1 - sig_alpha) * pos_prob_depth_preds,
+                        sig_alpha * pos_bbox_preds[:, 2]
+                        + (1 - sig_alpha) * pos_prob_depth_preds,
                         pos_bbox_targets_3d[:, 2],
                         sigma=pos_weights[:, 0],
                         weight=bbox_weights[:, 2],
-                        avg_factor=equal_weights.sum())
+                        avg_factor=equal_weights.sum(),
+                    )
                 else:
                     loss_fuse_depth = self.loss_depth(
-                        sig_alpha * pos_bbox_preds[:, 2] +
-                        (1 - sig_alpha) * pos_prob_depth_preds,
+                        sig_alpha * pos_bbox_preds[:, 2]
+                        + (1 - sig_alpha) * pos_prob_depth_preds,
                         pos_bbox_targets_3d[:, 2],
                         weight=bbox_weights[:, 2],
-                        avg_factor=equal_weights.sum())
-                loss_dict['loss_depth'] = loss_fuse_depth
+                        avg_factor=equal_weights.sum(),
+                    )
+                loss_dict["loss_depth"] = loss_fuse_depth
 
-                proj_bbox2d_inputs += (pos_depth_cls_preds, )
+                proj_bbox2d_inputs += (pos_depth_cls_preds,)
 
             if self.pred_keypoints:
                 # use smoothL1 to compute consistency loss for keypoints
                 # normalize the offsets with strides
-                proj_bbox2d_preds, pos_decoded_bbox2d_preds, kpts_targets = \
-                    self.get_proj_bbox2d(*proj_bbox2d_inputs, with_kpts=True)
-                loss_dict['loss_kpts'] = self.loss_bbox(
-                    pos_bbox_preds[:, self.kpts_start:self.kpts_start + 16],
+                (
+                    proj_bbox2d_preds,
+                    pos_decoded_bbox2d_preds,
                     kpts_targets,
-                    weight=bbox_weights[:,
-                                        self.kpts_start:self.kpts_start + 16],
-                    avg_factor=equal_weights.sum())
+                ) = self.get_proj_bbox2d(*proj_bbox2d_inputs, with_kpts=True)
+                loss_dict["loss_kpts"] = self.loss_bbox(
+                    pos_bbox_preds[:, self.kpts_start : self.kpts_start + 16],
+                    kpts_targets,
+                    weight=bbox_weights[:, self.kpts_start : self.kpts_start + 16],
+                    avg_factor=equal_weights.sum(),
+                )
 
             if self.pred_bbox2d:
-                loss_dict['loss_bbox2d'] = self.loss_bbox2d(
+                loss_dict["loss_bbox2d"] = self.loss_bbox2d(
                     pos_bbox_preds[:, -4:],
                     pos_bbox_targets_3d[:, -4:],
                     weight=bbox_weights[:, -4:],
-                    avg_factor=equal_weights.sum())
+                    avg_factor=equal_weights.sum(),
+                )
                 if not self.pred_keypoints:
-                    proj_bbox2d_preds, pos_decoded_bbox2d_preds = \
-                        self.get_proj_bbox2d(*proj_bbox2d_inputs)
-                loss_dict['loss_consistency'] = self.loss_consistency(
+                    proj_bbox2d_preds, pos_decoded_bbox2d_preds = self.get_proj_bbox2d(
+                        *proj_bbox2d_inputs
+                    )
+                loss_dict["loss_consistency"] = self.loss_consistency(
                     proj_bbox2d_preds,
                     pos_decoded_bbox2d_preds,
                     weight=bbox_weights[:, -4:],
-                    avg_factor=equal_weights.sum())
+                    avg_factor=equal_weights.sum(),
+                )
 
-            loss_dict['loss_centerness'] = self.loss_centerness(
-                pos_centerness, pos_centerness_targets)
+            loss_dict["loss_centerness"] = self.loss_centerness(
+                pos_centerness, pos_centerness_targets
+            )
 
             # attribute classification loss
             if self.pred_attrs:
-                loss_dict['loss_attr'] = self.loss_attr(
+                loss_dict["loss_attr"] = self.loss_attr(
                     pos_attr_preds,
                     pos_attr_targets,
                     pos_centerness_targets,
-                    avg_factor=pos_centerness_targets.sum())
+                    avg_factor=pos_centerness_targets.sum(),
+                )
 
         else:
             # need absolute due to possible negative delta x/y
-            loss_dict['loss_offset'] = pos_bbox_preds[:, :2].sum()
-            loss_dict['loss_size'] = pos_bbox_preds[:, 3:6].sum()
-            loss_dict['loss_rotsin'] = pos_bbox_preds[:, 6].sum()
-            loss_dict['loss_depth'] = pos_bbox_preds[:, 2].sum()
+            loss_dict["loss_offset"] = pos_bbox_preds[:, :2].sum()
+            loss_dict["loss_size"] = pos_bbox_preds[:, 3:6].sum()
+            loss_dict["loss_rotsin"] = pos_bbox_preds[:, 6].sum()
+            loss_dict["loss_depth"] = pos_bbox_preds[:, 2].sum()
             if self.pred_velo:
-                loss_dict['loss_velo'] = pos_bbox_preds[:, 7:9].sum()
+                loss_dict["loss_velo"] = pos_bbox_preds[:, 7:9].sum()
             if self.pred_keypoints:
-                loss_dict['loss_kpts'] = pos_bbox_preds[:,
-                                                        self.kpts_start:self.
-                                                        kpts_start + 16].sum()
+                loss_dict["loss_kpts"] = pos_bbox_preds[
+                    :, self.kpts_start : self.kpts_start + 16
+                ].sum()
             if self.pred_bbox2d:
-                loss_dict['loss_bbox2d'] = pos_bbox_preds[:, -4:].sum()
-                loss_dict['loss_consistency'] = pos_bbox_preds[:, -4:].sum()
-            loss_dict['loss_centerness'] = pos_centerness.sum()
+                loss_dict["loss_bbox2d"] = pos_bbox_preds[:, -4:].sum()
+                loss_dict["loss_consistency"] = pos_bbox_preds[:, -4:].sum()
+            loss_dict["loss_centerness"] = pos_centerness.sum()
             if self.use_direction_classifier:
-                loss_dict['loss_dir'] = pos_dir_cls_preds.sum()
+                loss_dict["loss_dir"] = pos_dir_cls_preds.sum()
             if self.use_depth_classifier:
                 sig_alpha = torch.sigmoid(self.fuse_lambda)
-                loss_fuse_depth = \
-                    sig_alpha * pos_bbox_preds[:, 2].sum() + \
-                    (1 - sig_alpha) * pos_depth_cls_preds.sum()
+                loss_fuse_depth = (
+                    sig_alpha * pos_bbox_preds[:, 2].sum()
+                    + (1 - sig_alpha) * pos_depth_cls_preds.sum()
+                )
                 if self.weight_dim != -1:
                     loss_fuse_depth *= torch.exp(-pos_weights[:, 0].sum())
-                loss_dict['loss_depth'] = loss_fuse_depth
+                loss_dict["loss_depth"] = loss_fuse_depth
             if self.pred_attrs:
-                loss_dict['loss_attr'] = pos_attr_preds.sum()
+                loss_dict["loss_attr"] = pos_attr_preds.sum()
 
         return loss_dict
 
     @force_fp32(
-        apply_to=('cls_scores', 'bbox_preds', 'dir_cls_preds',
-                  'depth_cls_preds', 'weights', 'attr_preds', 'centernesses'))
-    def get_bboxes(self,
-                   cls_scores,
-                   bbox_preds,
-                   dir_cls_preds,
-                   depth_cls_preds,
-                   weights,
-                   attr_preds,
-                   centernesses,
-                   img_metas,
-                   cfg=None,
-                   rescale=None):
+        apply_to=(
+            "cls_scores",
+            "bbox_preds",
+            "dir_cls_preds",
+            "depth_cls_preds",
+            "weights",
+            "attr_preds",
+            "centernesses",
+        )
+    )
+    def get_bboxes(
+        self,
+        cls_scores,
+        bbox_preds,
+        dir_cls_preds,
+        depth_cls_preds,
+        weights,
+        attr_preds,
+        centernesses,
+        img_metas,
+        cfg=None,
+        rescale=None,
+    ):
         """Transform network output for a batch into bbox predictions.
 
         Args:
@@ -835,56 +965,60 @@ class PGDHead(FCOSMono3DHead):
                 consists of predicted 3D boxes, scores, labels, attributes and
                 2D boxes (if necessary).
         """
-        assert len(cls_scores) == len(bbox_preds) == len(dir_cls_preds) == \
-            len(depth_cls_preds) == len(weights) == len(centernesses) == \
-            len(attr_preds), 'The length of cls_scores, bbox_preds, ' \
-            'dir_cls_preds, depth_cls_preds, weights, centernesses, and' \
-            f'attr_preds: {len(cls_scores)}, {len(bbox_preds)}, ' \
-            f'{len(dir_cls_preds)}, {len(depth_cls_preds)}, {len(weights)}' \
-            f'{len(centernesses)}, {len(attr_preds)} are inconsistent.'
+        assert (
+            len(cls_scores)
+            == len(bbox_preds)
+            == len(dir_cls_preds)
+            == len(depth_cls_preds)
+            == len(weights)
+            == len(centernesses)
+            == len(attr_preds)
+        ), (
+            "The length of cls_scores, bbox_preds, "
+            "dir_cls_preds, depth_cls_preds, weights, centernesses, and"
+            f"attr_preds: {len(cls_scores)}, {len(bbox_preds)}, "
+            f"{len(dir_cls_preds)}, {len(depth_cls_preds)}, {len(weights)}"
+            f"{len(centernesses)}, {len(attr_preds)} are inconsistent."
+        )
         num_levels = len(cls_scores)
 
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
-        mlvl_points = self.get_points(featmap_sizes, bbox_preds[0].dtype,
-                                      bbox_preds[0].device)
+        mlvl_points = self.get_points(
+            featmap_sizes, bbox_preds[0].dtype, bbox_preds[0].device
+        )
         result_list = []
         for img_id in range(len(img_metas)):
-            cls_score_list = [
-                cls_scores[i][img_id].detach() for i in range(num_levels)
-            ]
-            bbox_pred_list = [
-                bbox_preds[i][img_id].detach() for i in range(num_levels)
-            ]
+            cls_score_list = [cls_scores[i][img_id].detach() for i in range(num_levels)]
+            bbox_pred_list = [bbox_preds[i][img_id].detach() for i in range(num_levels)]
             if self.use_direction_classifier:
                 dir_cls_pred_list = [
-                    dir_cls_preds[i][img_id].detach()
-                    for i in range(num_levels)
+                    dir_cls_preds[i][img_id].detach() for i in range(num_levels)
                 ]
             else:
                 dir_cls_pred_list = [
-                    cls_scores[i][img_id].new_full(
-                        [2, *cls_scores[i][img_id].shape[1:]], 0).detach()
+                    cls_scores[i][img_id]
+                    .new_full([2, *cls_scores[i][img_id].shape[1:]], 0)
+                    .detach()
                     for i in range(num_levels)
                 ]
             if self.use_depth_classifier:
                 depth_cls_pred_list = [
-                    depth_cls_preds[i][img_id].detach()
-                    for i in range(num_levels)
+                    depth_cls_preds[i][img_id].detach() for i in range(num_levels)
                 ]
             else:
                 depth_cls_pred_list = [
-                    cls_scores[i][img_id].new_full(
-                        [self.num_depth_cls, *cls_scores[i][img_id].shape[1:]],
-                        0).detach() for i in range(num_levels)
+                    cls_scores[i][img_id]
+                    .new_full([self.num_depth_cls, *cls_scores[i][img_id].shape[1:]], 0)
+                    .detach()
+                    for i in range(num_levels)
                 ]
             if self.weight_dim != -1:
-                weight_list = [
-                    weights[i][img_id].detach() for i in range(num_levels)
-                ]
+                weight_list = [weights[i][img_id].detach() for i in range(num_levels)]
             else:
                 weight_list = [
-                    cls_scores[i][img_id].new_full(
-                        [1, *cls_scores[i][img_id].shape[1:]], 0).detach()
+                    cls_scores[i][img_id]
+                    .new_full([1, *cls_scores[i][img_id].shape[1:]], 0)
+                    .detach()
                     for i in range(num_levels)
                 ]
             if self.pred_attrs:
@@ -893,9 +1027,12 @@ class PGDHead(FCOSMono3DHead):
                 ]
             else:
                 attr_pred_list = [
-                    cls_scores[i][img_id].new_full(
+                    cls_scores[i][img_id]
+                    .new_full(
                         [self.num_attrs, *cls_scores[i][img_id].shape[1:]],
-                        self.attr_background_label).detach()
+                        self.attr_background_label,
+                    )
+                    .detach()
                     for i in range(num_levels)
                 ]
             centerness_pred_list = [
@@ -903,24 +1040,35 @@ class PGDHead(FCOSMono3DHead):
             ]
             input_meta = img_metas[img_id]
             det_bboxes = self._get_bboxes_single(
-                cls_score_list, bbox_pred_list, dir_cls_pred_list,
-                depth_cls_pred_list, weight_list, attr_pred_list,
-                centerness_pred_list, mlvl_points, input_meta, cfg, rescale)
+                cls_score_list,
+                bbox_pred_list,
+                dir_cls_pred_list,
+                depth_cls_pred_list,
+                weight_list,
+                attr_pred_list,
+                centerness_pred_list,
+                mlvl_points,
+                input_meta,
+                cfg,
+                rescale,
+            )
             result_list.append(det_bboxes)
         return result_list
 
-    def _get_bboxes_single(self,
-                           cls_scores,
-                           bbox_preds,
-                           dir_cls_preds,
-                           depth_cls_preds,
-                           weights,
-                           attr_preds,
-                           centernesses,
-                           mlvl_points,
-                           input_meta,
-                           cfg,
-                           rescale=False):
+    def _get_bboxes_single(
+        self,
+        cls_scores,
+        bbox_preds,
+        dir_cls_preds,
+        depth_cls_preds,
+        weights,
+        attr_preds,
+        centernesses,
+        mlvl_points,
+        input_meta,
+        cfg,
+        rescale=False,
+    ):
         """Transform outputs for a single batch item into bbox predictions.
 
         Args:
@@ -952,8 +1100,8 @@ class PGDHead(FCOSMono3DHead):
             tuples[Tensor]: Predicted 3D boxes, scores, labels, attributes and
                 2D boxes (if necessary).
         """
-        view = np.array(input_meta['cam2img'])
-        scale_factor = input_meta['scale_factor']
+        view = np.array(input_meta["cam2img"])
+        scale_factor = input_meta["scale_factor"]
         cfg = self.test_cfg if cfg is None else cfg
         assert len(cls_scores) == len(bbox_preds) == len(mlvl_points)
         mlvl_centers2d = []
@@ -968,20 +1116,37 @@ class PGDHead(FCOSMono3DHead):
         if self.pred_bbox2d:
             mlvl_bboxes2d = []
 
-        for cls_score, bbox_pred, dir_cls_pred, depth_cls_pred, weight, \
-                attr_pred, centerness, points in zip(
-                    cls_scores, bbox_preds, dir_cls_preds, depth_cls_preds,
-                    weights, attr_preds, centernesses, mlvl_points):
+        for (
+            cls_score,
+            bbox_pred,
+            dir_cls_pred,
+            depth_cls_pred,
+            weight,
+            attr_pred,
+            centerness,
+            points,
+        ) in zip(
+            cls_scores,
+            bbox_preds,
+            dir_cls_preds,
+            depth_cls_preds,
+            weights,
+            attr_preds,
+            centernesses,
+            mlvl_points,
+        ):
             assert cls_score.size()[-2:] == bbox_pred.size()[-2:]
-            scores = cls_score.permute(1, 2, 0).reshape(
-                -1, self.cls_out_channels).sigmoid()
+            scores = (
+                cls_score.permute(1, 2, 0).reshape(-1, self.cls_out_channels).sigmoid()
+            )
             dir_cls_pred = dir_cls_pred.permute(1, 2, 0).reshape(-1, 2)
             dir_cls_score = torch.max(dir_cls_pred, dim=-1)[1]
             depth_cls_pred = depth_cls_pred.permute(1, 2, 0).reshape(
-                -1, self.num_depth_cls)
-            depth_cls_score = F.softmax(
-                depth_cls_pred, dim=-1).topk(
-                    k=2, dim=-1)[0].mean(dim=-1)
+                -1, self.num_depth_cls
+            )
+            depth_cls_score = (
+                F.softmax(depth_cls_pred, dim=-1).topk(k=2, dim=-1)[0].mean(dim=-1)
+            )
             if self.weight_dim != -1:
                 weight = weight.permute(1, 2, 0).reshape(-1, self.weight_dim)
             else:
@@ -991,13 +1156,11 @@ class PGDHead(FCOSMono3DHead):
             attr_score = torch.max(attr_pred, dim=-1)[1]
             centerness = centerness.permute(1, 2, 0).reshape(-1).sigmoid()
 
-            bbox_pred = bbox_pred.permute(1, 2,
-                                          0).reshape(-1,
-                                                     sum(self.group_reg_dims))
-            bbox_pred3d = bbox_pred[:, :self.bbox_coder.bbox_code_size]
+            bbox_pred = bbox_pred.permute(1, 2, 0).reshape(-1, sum(self.group_reg_dims))
+            bbox_pred3d = bbox_pred[:, : self.bbox_coder.bbox_code_size]
             if self.pred_bbox2d:
                 bbox_pred2d = bbox_pred[:, -4:]
-            nms_pre = cfg.get('nms_pre', -1)
+            nms_pre = cfg.get("nms_pre", -1)
             if nms_pre > 0 and scores.shape[0] > nms_pre:
                 merged_scores = scores * centerness[:, None]
                 if self.use_depth_classifier:
@@ -1021,17 +1184,21 @@ class PGDHead(FCOSMono3DHead):
             # change the offset to actual center predictions
             bbox_pred3d[:, :2] = points - bbox_pred3d[:, :2]
             if rescale:
-                bbox_pred3d[:, :2] /= bbox_pred3d[:, :2].new_tensor(
-                    scale_factor)
+                bbox_pred3d[:, :2] /= bbox_pred3d[:, :2].new_tensor(scale_factor)
                 if self.pred_bbox2d:
                     bbox_pred2d /= bbox_pred2d.new_tensor(scale_factor)
             if self.use_depth_classifier:
                 prob_depth_pred = self.bbox_coder.decode_prob_depth(
-                    depth_cls_pred, self.depth_range, self.depth_unit,
-                    self.division, self.num_depth_cls)
+                    depth_cls_pred,
+                    self.depth_range,
+                    self.depth_unit,
+                    self.division,
+                    self.num_depth_cls,
+                )
                 sig_alpha = torch.sigmoid(self.fuse_lambda)
-                bbox_pred3d[:, 2] = sig_alpha * bbox_pred3d[:, 2] + \
-                    (1 - sig_alpha) * prob_depth_pred
+                bbox_pred3d[:, 2] = (
+                    sig_alpha * bbox_pred3d[:, 2] + (1 - sig_alpha) * prob_depth_pred
+                )
             pred_center2d = bbox_pred3d[:, :3].clone()
             bbox_pred3d[:, :3] = points_img2cam(bbox_pred3d[:, :3], view)
             mlvl_centers2d.append(pred_center2d)
@@ -1044,7 +1211,8 @@ class PGDHead(FCOSMono3DHead):
             mlvl_depth_uncertainty.append(depth_uncertainty)
             if self.pred_bbox2d:
                 bbox_pred2d = distance2bbox(
-                    points, bbox_pred2d, max_shape=input_meta['img_shape'])
+                    points, bbox_pred2d, max_shape=input_meta["img_shape"]
+                )
                 mlvl_bboxes2d.append(bbox_pred2d)
 
         mlvl_centers2d = torch.cat(mlvl_centers2d)
@@ -1054,18 +1222,19 @@ class PGDHead(FCOSMono3DHead):
             mlvl_bboxes2d = torch.cat(mlvl_bboxes2d)
 
         # change local yaw to global yaw for 3D nms
-        cam2img = torch.eye(
-            4, dtype=mlvl_centers2d.dtype, device=mlvl_centers2d.device)
-        cam2img[:view.shape[0], :view.shape[1]] = \
-            mlvl_centers2d.new_tensor(view)
-        mlvl_bboxes = self.bbox_coder.decode_yaw(mlvl_bboxes, mlvl_centers2d,
-                                                 mlvl_dir_scores,
-                                                 self.dir_offset, cam2img)
+        cam2img = torch.eye(4, dtype=mlvl_centers2d.dtype, device=mlvl_centers2d.device)
+        cam2img[: view.shape[0], : view.shape[1]] = mlvl_centers2d.new_tensor(view)
+        mlvl_bboxes = self.bbox_coder.decode_yaw(
+            mlvl_bboxes, mlvl_centers2d, mlvl_dir_scores, self.dir_offset, cam2img
+        )
 
-        mlvl_bboxes_for_nms = xywhr2xyxyr(input_meta['box_type_3d'](
-            mlvl_bboxes,
-            box_dim=self.bbox_coder.bbox_code_size,
-            origin=(0.5, 0.5, 0.5)).bev)
+        mlvl_bboxes_for_nms = xywhr2xyxyr(
+            input_meta["box_type_3d"](
+                mlvl_bboxes,
+                box_dim=self.bbox_coder.bbox_code_size,
+                origin=(0.5, 0.5, 0.5),
+            ).bev
+        )
 
         mlvl_scores = torch.cat(mlvl_scores)
         padding = mlvl_scores.new_zeros(mlvl_scores.shape[0], 1)
@@ -1083,16 +1252,22 @@ class PGDHead(FCOSMono3DHead):
             if self.weight_dim != -1:
                 mlvl_depth_uncertainty = torch.cat(mlvl_depth_uncertainty)
                 mlvl_nms_scores *= mlvl_depth_uncertainty[:, None]
-        results = box3d_multiclass_nms(mlvl_bboxes, mlvl_bboxes_for_nms,
-                                       mlvl_nms_scores, cfg.score_thr,
-                                       cfg.max_per_img, cfg, mlvl_dir_scores,
-                                       mlvl_attr_scores, mlvl_bboxes2d)
+        results = box3d_multiclass_nms(
+            mlvl_bboxes,
+            mlvl_bboxes_for_nms,
+            mlvl_nms_scores,
+            cfg.score_thr,
+            cfg.max_per_img,
+            cfg,
+            mlvl_dir_scores,
+            mlvl_attr_scores,
+            mlvl_bboxes2d,
+        )
         bboxes, scores, labels, dir_scores, attrs = results[0:5]
         attrs = attrs.to(labels.dtype)  # change data type to int
-        bboxes = input_meta['box_type_3d'](
-            bboxes,
-            box_dim=self.bbox_coder.bbox_code_size,
-            origin=(0.5, 0.5, 0.5))
+        bboxes = input_meta["box_type_3d"](
+            bboxes, box_dim=self.bbox_coder.bbox_code_size, origin=(0.5, 0.5, 0.5)
+        )
         # Note that the predictions use origin (0.5, 0.5, 0.5)
         # Due to the ground truth centers2d are the gravity center of objects
         # v0.10.0 fix inplace operation to the input tensor of cam_box3d
@@ -1104,13 +1279,21 @@ class PGDHead(FCOSMono3DHead):
         if self.pred_bbox2d:
             bboxes2d = results[-1]
             bboxes2d = torch.cat([bboxes2d, scores[:, None]], dim=1)
-            outputs = outputs + (bboxes2d, )
+            outputs = outputs + (bboxes2d,)
 
         return outputs
 
-    def get_targets(self, points, gt_bboxes_list, gt_labels_list,
-                    gt_bboxes_3d_list, gt_labels_3d_list, centers2d_list,
-                    depths_list, attr_labels_list):
+    def get_targets(
+        self,
+        points,
+        gt_bboxes_list,
+        gt_labels_list,
+        gt_bboxes_3d_list,
+        gt_labels_3d_list,
+        centers2d_list,
+        depths_list,
+        attr_labels_list,
+    ):
         """Compute regression, classification and centerss targets for points
         in multiple images.
 
@@ -1142,8 +1325,8 @@ class PGDHead(FCOSMono3DHead):
         num_levels = len(points)
         # expand regress ranges to align with points
         expanded_regress_ranges = [
-            points[i].new_tensor(self.regress_ranges[i])[None].expand_as(
-                points[i]) for i in range(num_levels)
+            points[i].new_tensor(self.regress_ranges[i])[None].expand_as(points[i])
+            for i in range(num_levels)
         ]
         # concat all levels points and regress ranges
         concat_regress_ranges = torch.cat(expanded_regress_ranges, dim=0)
@@ -1159,24 +1342,30 @@ class PGDHead(FCOSMono3DHead):
             ]
 
         # get labels and bbox_targets of each image
-        _, bbox_targets_list, labels_3d_list, bbox_targets_3d_list, \
-            centerness_targets_list, attr_targets_list = multi_apply(
-                self._get_target_single,
-                gt_bboxes_list,
-                gt_labels_list,
-                gt_bboxes_3d_list,
-                gt_labels_3d_list,
-                centers2d_list,
-                depths_list,
-                attr_labels_list,
-                points=concat_points,
-                regress_ranges=concat_regress_ranges,
-                num_points_per_lvl=num_points)
+        (
+            _,
+            bbox_targets_list,
+            labels_3d_list,
+            bbox_targets_3d_list,
+            centerness_targets_list,
+            attr_targets_list,
+        ) = multi_apply(
+            self._get_target_single,
+            gt_bboxes_list,
+            gt_labels_list,
+            gt_bboxes_3d_list,
+            gt_labels_3d_list,
+            centers2d_list,
+            depths_list,
+            attr_labels_list,
+            points=concat_points,
+            regress_ranges=concat_regress_ranges,
+            num_points_per_lvl=num_points,
+        )
 
         # split to per img, per level
         bbox_targets_list = [
-            bbox_targets.split(num_points, 0)
-            for bbox_targets in bbox_targets_list
+            bbox_targets.split(num_points, 0) for bbox_targets in bbox_targets_list
         ]
         labels_3d_list = [
             labels_3d.split(num_points, 0) for labels_3d in labels_3d_list
@@ -1190,8 +1379,7 @@ class PGDHead(FCOSMono3DHead):
             for centerness_targets in centerness_targets_list
         ]
         attr_targets_list = [
-            attr_targets.split(num_points, 0)
-            for attr_targets in attr_targets_list
+            attr_targets.split(num_points, 0) for attr_targets in attr_targets_list
         ]
 
         # concat per level image
@@ -1201,29 +1389,35 @@ class PGDHead(FCOSMono3DHead):
         concat_lvl_attr_targets = []
         for i in range(num_levels):
             concat_lvl_labels_3d.append(
-                torch.cat([labels[i] for labels in labels_3d_list]))
+                torch.cat([labels[i] for labels in labels_3d_list])
+            )
             concat_lvl_centerness_targets.append(
-                torch.cat([
-                    centerness_targets[i]
-                    for centerness_targets in centerness_targets_list
-                ]))
-            bbox_targets_3d = torch.cat([
-                bbox_targets_3d[i] for bbox_targets_3d in bbox_targets_3d_list
-            ])
+                torch.cat(
+                    [
+                        centerness_targets[i]
+                        for centerness_targets in centerness_targets_list
+                    ]
+                )
+            )
+            bbox_targets_3d = torch.cat(
+                [bbox_targets_3d[i] for bbox_targets_3d in bbox_targets_3d_list]
+            )
             if self.pred_bbox2d:
                 bbox_targets = torch.cat(
-                    [bbox_targets[i] for bbox_targets in bbox_targets_list])
-                bbox_targets_3d = torch.cat([bbox_targets_3d, bbox_targets],
-                                            dim=1)
+                    [bbox_targets[i] for bbox_targets in bbox_targets_list]
+                )
+                bbox_targets_3d = torch.cat([bbox_targets_3d, bbox_targets], dim=1)
             concat_lvl_attr_targets.append(
-                torch.cat(
-                    [attr_targets[i] for attr_targets in attr_targets_list]))
+                torch.cat([attr_targets[i] for attr_targets in attr_targets_list])
+            )
             if self.norm_on_bbox:
-                bbox_targets_3d[:, :2] = \
-                    bbox_targets_3d[:, :2] / self.strides[i]
+                bbox_targets_3d[:, :2] = bbox_targets_3d[:, :2] / self.strides[i]
                 if self.pred_bbox2d:
-                    bbox_targets_3d[:, -4:] = \
-                        bbox_targets_3d[:, -4:] / self.strides[i]
+                    bbox_targets_3d[:, -4:] = bbox_targets_3d[:, -4:] / self.strides[i]
             concat_lvl_bbox_targets_3d.append(bbox_targets_3d)
-        return concat_lvl_labels_3d, concat_lvl_bbox_targets_3d, \
-            concat_lvl_centerness_targets, concat_lvl_attr_targets
+        return (
+            concat_lvl_labels_3d,
+            concat_lvl_bbox_targets_3d,
+            concat_lvl_centerness_targets,
+            concat_lvl_attr_targets,
+        )
