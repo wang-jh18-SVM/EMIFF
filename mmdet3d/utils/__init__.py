@@ -8,7 +8,12 @@ from .misc import find_latest_checkpoint
 from .setup_env import setup_multi_processes
 
 __all__ = [
-    'Registry', 'build_from_cfg', 'get_root_logger', 'collect_env',
-    'print_log', 'setup_multi_processes', 'find_latest_checkpoint',
-    'compat_cfg'
+    "Registry",
+    "build_from_cfg",
+    "get_root_logger",
+    "collect_env",
+    "print_log",
+    "setup_multi_processes",
+    "find_latest_checkpoint",
+    "compat_cfg",
 ]

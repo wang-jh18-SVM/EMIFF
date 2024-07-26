@@ -24,9 +24,10 @@ class PointXYZWHLRBBoxCoder(BaseBBoxCoder):
         self.use_mean_size = use_mean_size
         if self.use_mean_size:
             self.mean_size = torch.from_numpy(np.array(mean_size)).float()
-            assert self.mean_size.min() > 0, \
-                f'The min of mean_size should > 0, however currently it is '\
-                f'{self.mean_size.min()}, please check it in your config.'
+            assert self.mean_size.min() > 0, (
+                f"The min of mean_size should > 0, however currently it is "
+                f"{self.mean_size.min()}, please check it in your config."
+            )
 
     def encode(self, gt_bboxes_3d, points, gt_labels_3d=None):
         """Encode ground truth to prediction targets.
@@ -43,14 +44,14 @@ class PointXYZWHLRBBoxCoder(BaseBBoxCoder):
         """
         gt_bboxes_3d[:, 3:6] = torch.clamp_min(gt_bboxes_3d[:, 3:6], min=1e-5)
 
-        xg, yg, zg, dxg, dyg, dzg, rg, *cgs = torch.split(
-            gt_bboxes_3d, 1, dim=-1)
+        xg, yg, zg, dxg, dyg, dzg, rg, *cgs = torch.split(gt_bboxes_3d, 1, dim=-1)
         xa, ya, za = torch.split(points, 1, dim=-1)
 
         if self.use_mean_size:
-            assert gt_labels_3d.max() <= self.mean_size.shape[0] - 1, \
-                f'the max gt label {gt_labels_3d.max()} is bigger than' \
-                f'anchor types {self.mean_size.shape[0] - 1}.'
+            assert gt_labels_3d.max() <= self.mean_size.shape[0] - 1, (
+                f"the max gt label {gt_labels_3d.max()} is bigger than"
+                f"anchor types {self.mean_size.shape[0] - 1}."
+            )
             self.mean_size = self.mean_size.to(gt_labels_3d.device)
             point_anchor_size = self.mean_size[gt_labels_3d]
             dxa, dya, dza = torch.split(point_anchor_size, 1, dim=-1)
@@ -62,18 +63,16 @@ class PointXYZWHLRBBoxCoder(BaseBBoxCoder):
             dyt = torch.log(dyg / dya)
             dzt = torch.log(dzg / dza)
         else:
-            xt = (xg - xa)
-            yt = (yg - ya)
-            zt = (zg - za)
+            xt = xg - xa
+            yt = yg - ya
+            zt = zg - za
             dxt = torch.log(dxg)
             dyt = torch.log(dyg)
             dzt = torch.log(dzg)
 
         return torch.cat(
-            [xt, yt, zt, dxt, dyt, dzt,
-             torch.cos(rg),
-             torch.sin(rg), *cgs],
-            dim=-1)
+            [xt, yt, zt, dxt, dyt, dzt, torch.cos(rg), torch.sin(rg), *cgs], dim=-1
+        )
 
     def decode(self, box_encodings, points, pred_labels_3d=None):
         """Decode predicted parts and points to bbox3d.
@@ -87,13 +86,15 @@ class PointXYZWHLRBBoxCoder(BaseBBoxCoder):
             torch.Tensor: Decoded boxes with shape (N, 7 + C)
         """
         xt, yt, zt, dxt, dyt, dzt, cost, sint, *cts = torch.split(
-            box_encodings, 1, dim=-1)
+            box_encodings, 1, dim=-1
+        )
         xa, ya, za = torch.split(points, 1, dim=-1)
 
         if self.use_mean_size:
-            assert pred_labels_3d.max() <= self.mean_size.shape[0] - 1, \
-                f'The max pred label {pred_labels_3d.max()} is bigger than' \
-                f'anchor types {self.mean_size.shape[0] - 1}.'
+            assert pred_labels_3d.max() <= self.mean_size.shape[0] - 1, (
+                f"The max pred label {pred_labels_3d.max()} is bigger than"
+                f"anchor types {self.mean_size.shape[0] - 1}."
+            )
             self.mean_size = self.mean_size.to(pred_labels_3d.device)
             point_anchor_size = self.mean_size[pred_labels_3d]
             dxa, dya, dza = torch.split(point_anchor_size, 1, dim=-1)
@@ -109,8 +110,7 @@ class PointXYZWHLRBBoxCoder(BaseBBoxCoder):
             xg = xt + xa
             yg = yt + ya
             zg = zt + za
-            dxg, dyg, dzg = torch.split(
-                torch.exp(box_encodings[..., 3:6]), 1, dim=-1)
+            dxg, dyg, dzg = torch.split(torch.exp(box_encodings[..., 3:6]), 1, dim=-1)
 
         rg = torch.atan2(sint, cost)
 

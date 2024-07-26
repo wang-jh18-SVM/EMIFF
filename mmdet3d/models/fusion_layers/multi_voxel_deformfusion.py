@@ -5,26 +5,31 @@ from mmcv.runner import BaseModule
 from torch import nn as nn
 from torch.nn import functional as F
 
-from mmdet3d.core.bbox.structures import (get_proj_mat_by_coord_type,
-                                          points_cam2img)
+from mmdet3d.core.bbox.structures import get_proj_mat_by_coord_type, points_cam2img
 from ..builder import FUSION_LAYERS
 from . import apply_3d_transformation
-from mmcv.ops.multi_scale_deform_attn import MultiScaleDeformableAttnFunction, multi_scale_deformable_attn_pytorch
-import math 
+from mmcv.ops.multi_scale_deform_attn import (
+    MultiScaleDeformableAttnFunction,
+    multi_scale_deformable_attn_pytorch,
+)
+import math
 
-def point_sample(img_meta,
-                 points,
-                 proj_mat,
-                 coord_type,
-                 img_scale_factor,
-                 img_crop_offset,
-                 img_flip,
-                 img_pad_shape,
-                 img_shape,
-                 aligned=True,
-                 padding_mode='zeros',
-                 align_corners=True,
-                 img_id=0):
+
+def point_sample(
+    img_meta,
+    points,
+    proj_mat,
+    coord_type,
+    img_scale_factor,
+    img_crop_offset,
+    img_flip,
+    img_pad_shape,
+    img_shape,
+    aligned=True,
+    padding_mode="zeros",
+    align_corners=True,
+    img_id=0,
+):
     """Obtain image features using points.
 
     Args:
@@ -54,15 +59,16 @@ def point_sample(img_meta,
     """
 
     # apply transformation based on info in img_meta
-    points = apply_3d_transformation(
-        points, coord_type, img_meta, reverse=True)
+    points = apply_3d_transformation(points, coord_type, img_meta, reverse=True)
 
     # project points to camera coordinate
     pts_2d_with_depth = points_cam2img(points, proj_mat, with_depth=True)
     pts_depth = pts_2d_with_depth[:, -1]
     pts_2d = pts_2d_with_depth[:, :2]
 
-    valid_depth_idx = (pts_depth > 0).reshape(-1,)
+    valid_depth_idx = (pts_depth > 0).reshape(
+        -1,
+    )
 
     # img transformation: scale -> crop -> flip
     # the image is resized by img_scale_factor
@@ -82,14 +88,18 @@ def point_sample(img_meta,
     coor_y = coor_y / h * 2 - 1
     coor_x = coor_x / w * 2 - 1
 
-    valid_y_idx = ((coor_y >= -1) & (coor_y <= 1)).reshape(-1,)
-    valid_x_idx = ((coor_x >= -1) & (coor_y <= 1)).reshape(-1,)
+    valid_y_idx = ((coor_y >= -1) & (coor_y <= 1)).reshape(
+        -1,
+    )
+    valid_x_idx = ((coor_x >= -1) & (coor_y <= 1)).reshape(
+        -1,
+    )
 
-    grid = torch.cat([coor_x, coor_y],
-                     dim=1)
+    grid = torch.cat([coor_x, coor_y], dim=1)
 
     valid_idx = valid_depth_idx & valid_y_idx & valid_x_idx
     return grid, valid_idx
+
 
 @FUSION_LAYERS.register_module()
 class MultiVoxelDeformFusion(BaseModule):
@@ -127,29 +137,31 @@ class MultiVoxelDeformFusion(BaseModule):
             to image features. Defaults to True.
     """
 
-    def __init__(self,
-                 img_channels,
-                 pts_channels,
-                 mid_channels,
-                 out_channels,
-                 img_levels=3,
-                 coord_type='LIDAR',
-                 conv_cfg=None,
-                 norm_cfg=None,
-                 act_cfg=None,
-                 init_cfg=None,
-                 activate_out=True,
-                 fuse_out=False,
-                 dropout_ratio=0,
-                 aligned=True,
-                 align_corners=True,
-                 padding_mode='zeros',
-                 lateral_conv=True,
-                 num_heads=4,
-                 num_points=8,
-                 fix_offset=True,
-                 im2col_step=64,
-                 multi_input=''):
+    def __init__(
+        self,
+        img_channels,
+        pts_channels,
+        mid_channels,
+        out_channels,
+        img_levels=3,
+        coord_type="LIDAR",
+        conv_cfg=None,
+        norm_cfg=None,
+        act_cfg=None,
+        init_cfg=None,
+        activate_out=True,
+        fuse_out=False,
+        dropout_ratio=0,
+        aligned=True,
+        align_corners=True,
+        padding_mode="zeros",
+        lateral_conv=True,
+        num_heads=4,
+        num_points=8,
+        fix_offset=True,
+        im2col_step=64,
+        multi_input="",
+    ):
         super(MultiVoxelDeformFusion, self).__init__(init_cfg=init_cfg)
         if isinstance(img_levels, int):
             img_levels = [img_levels]
@@ -189,7 +201,8 @@ class MultiVoxelDeformFusion(BaseModule):
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
                     act_cfg=self.act_cfg,
-                    inplace=False)
+                    inplace=False,
+                )
                 self.lateral_convs.append(l_conv)
             self.img_transform = nn.Sequential(
                 nn.Linear(mid_channels, out_channels),
@@ -211,46 +224,55 @@ class MultiVoxelDeformFusion(BaseModule):
                 # For pts the BN is initialized differently by default
                 # TODO: check whether this is necessary
                 nn.BatchNorm1d(out_channels, eps=1e-3, momentum=0.01),
-                nn.ReLU(inplace=False))
+                nn.ReLU(inplace=False),
+            )
 
         # emprically find this projection provides no improvement
         # self.pts_proj = nn.Linear(pts_channels, mid_channels)
         # self.img_proj = nn.Linear(mid_channels if lateral_conv else img_channels[0], mid_channels)
 
         self.deform_sampling_offsets = nn.Linear(
-                mid_channels, num_heads * self.num_levels * num_points * 2
-            )
-        self.attention_weights = nn.Linear(mid_channels,
-                    num_heads * self.num_levels * self.num_points)
+            mid_channels, num_heads * self.num_levels * num_points * 2
+        )
+        self.attention_weights = nn.Linear(
+            mid_channels, num_heads * self.num_levels * self.num_points
+        )
         self.value_proj = nn.Linear(mid_channels, mid_channels)
 
         if self.fix_offset:
             self.deform_sampling_offsets.weight.requires_grad = False
             self.deform_sampling_offsets.bias.requires_grad = False
 
-
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                xavier_init(m, distribution='uniform')
+                xavier_init(m, distribution="uniform")
             elif isinstance(m, nn.Conv2d):
-                normal_init(m, 0., std=1.0)
-        constant_init(self.attention_weights, val=0., bias=0.)
-        constant_init(self.deform_sampling_offsets, 0.)
-        thetas = torch.arange(
-            self.num_heads,
-            dtype=torch.float32) * (2.0 * math.pi / self.num_heads)
+                normal_init(m, 0.0, std=1.0)
+        constant_init(self.attention_weights, val=0.0, bias=0.0)
+        constant_init(self.deform_sampling_offsets, 0.0)
+        thetas = torch.arange(self.num_heads, dtype=torch.float32) * (
+            2.0 * math.pi / self.num_heads
+        )
         grid_init = torch.stack([thetas.cos(), thetas.sin()], -1)
-        grid_init = (grid_init /
-                     grid_init.abs().max(-1, keepdim=True)[0]).view(
-                         self.num_heads, 1, 1,
-                         2).repeat(1, self.num_levels, self.num_points, 1)
+        grid_init = (
+            (grid_init / grid_init.abs().max(-1, keepdim=True)[0])
+            .view(self.num_heads, 1, 1, 2)
+            .repeat(1, self.num_levels, self.num_points, 1)
+        )
         for i in range(self.num_points):
             grid_init[:, :, i, :] *= i + 1
         self.deform_sampling_offsets.bias.data = grid_init.view(-1)
 
-    def forward(self, img_feats, voxel_coors, voxel_feats, \
-                        img_metas, voxel_size, point_cloud_range):
+    def forward(
+        self,
+        img_feats,
+        voxel_coors,
+        voxel_feats,
+        img_metas,
+        voxel_size,
+        point_cloud_range,
+    ):
         """Forward function.
 
         Args:
@@ -265,10 +287,17 @@ class MultiVoxelDeformFusion(BaseModule):
         """
 
         from IPython import embed
-        embed(header='MultiVoxelDeformFusion.forward')
 
-        img_pts = self.obtain_mlvl_feats(img_feats, voxel_coors, voxel_feats, \
-                            img_metas, voxel_size, point_cloud_range)
+        embed(header="MultiVoxelDeformFusion.forward")
+
+        img_pts = self.obtain_mlvl_feats(
+            img_feats,
+            voxel_coors,
+            voxel_feats,
+            img_metas,
+            voxel_size,
+            point_cloud_range,
+        )
         img_pre_fuse = self.img_transform(img_pts)
         if self.training and self.dropout_ratio > 0:
             img_pre_fuse = F.dropout(img_pre_fuse, self.dropout_ratio)
@@ -283,8 +312,15 @@ class MultiVoxelDeformFusion(BaseModule):
 
         return fuse_out
 
-    def obtain_mlvl_feats(self, img_feats, voxel_coors, voxel_feats, img_metas, \
-                        voxel_size, point_cloud_range):
+    def obtain_mlvl_feats(
+        self,
+        img_feats,
+        voxel_coors,
+        voxel_feats,
+        img_metas,
+        voxel_size,
+        point_cloud_range,
+    ):
         """Obtain multi-level features for each point.
 
         Args:
@@ -296,8 +332,6 @@ class MultiVoxelDeformFusion(BaseModule):
         Returns:
             torch.Tensor: Corresponding image features of each point.
         """
-
-
 
         if self.lateral_convs is not None:
             img_ins = [
@@ -314,23 +348,28 @@ class MultiVoxelDeformFusion(BaseModule):
         for i in range(len(img_metas)):
             feat_list = []
             for level in range(len(self.img_levels)):
-                feat_list.append(img_ins[level][i * num_camera: (i + 1) * num_camera])
+                feat_list.append(img_ins[level][i * num_camera : (i + 1) * num_camera])
             multi_feat_lists.append(feat_list)
 
         from IPython import embed
-        embed(header='MultiVoxelDeformFusion.obtain_mlvl_feats')
+
+        embed(header="MultiVoxelDeformFusion.obtain_mlvl_feats")
         for i in range(len(img_metas)):
             voxel_coors_per_img = voxel_coors[voxel_coors[:, 0] == i]
             x = (voxel_coors_per_img[:, 3] + 0.5) * voxel_size[0] + point_cloud_range[0]
             y = (voxel_coors_per_img[:, 2] + 0.5) * voxel_size[1] + point_cloud_range[1]
             z = (voxel_coors_per_img[:, 1] + 0.5) * voxel_size[2] + point_cloud_range[2]
-            x = x.unsqueeze(-1); y = y.unsqueeze(-1); z = z.unsqueeze(-1)
+            x = x.unsqueeze(-1)
+            y = y.unsqueeze(-1)
+            z = z.unsqueeze(-1)
             decoded_voxel_coors = torch.cat([x, y, z], dim=-1)
             num_voxels = decoded_voxel_coors.shape[0]
-            voxel_feat = voxel_feats[start_iter: start_iter + num_voxels]
+            voxel_feat = voxel_feats[start_iter : start_iter + num_voxels]
             img_feats_per_point.append(
-                self.sample_single(multi_feat_lists[i], \
-                decoded_voxel_coors, voxel_feat, img_metas[i]))
+                self.sample_single(
+                    multi_feat_lists[i], decoded_voxel_coors, voxel_feat, img_metas[i]
+                )
+            )
             start_iter += num_voxels
         img_pts = torch.cat(img_feats_per_point, dim=0)
         return img_pts
@@ -349,16 +388,21 @@ class MultiVoxelDeformFusion(BaseModule):
         """
 
         from IPython import embed
-        embed(header='MultiVoxelDeformFusion.sample_single')
+
+        embed(header="MultiVoxelDeformFusion.sample_single")
 
         # TODO: image transformation also extracted
         img_scale_factor = (
-            pts.new_tensor(img_meta['scale_factor'][:2])
-            if 'scale_factor' in img_meta.keys() else 1)
-        img_flip = img_meta['flip'] if 'flip' in img_meta.keys() else False
+            pts.new_tensor(img_meta["scale_factor"][:2])
+            if "scale_factor" in img_meta.keys()
+            else 1
+        )
+        img_flip = img_meta["flip"] if "flip" in img_meta.keys() else False
         img_crop_offset = (
-            pts.new_tensor(img_meta['img_crop_offset'])
-            if 'img_crop_offset' in img_meta.keys() else 0)
+            pts.new_tensor(img_meta["img_crop_offset"])
+            if "img_crop_offset" in img_meta.keys()
+            else 0
+        )
         proj_mat_list = get_proj_mat_by_coord_type(img_meta, self.coord_type)
         num_camera = img_feats[0].shape[0]
         # align pts_feats from each camera
@@ -373,8 +417,8 @@ class MultiVoxelDeformFusion(BaseModule):
                 img_scale_factor=img_scale_factor,
                 img_crop_offset=img_crop_offset,
                 img_flip=img_flip,
-                img_pad_shape=img_meta['input_shape'][:2],
-                img_shape=img_meta['img_shape'][:2],
+                img_pad_shape=img_meta["input_shape"][:2],
+                img_shape=img_meta["img_shape"][:2],
                 aligned=self.aligned,
                 padding_mode=self.padding_mode,
                 align_corners=self.align_corners,
@@ -386,48 +430,58 @@ class MultiVoxelDeformFusion(BaseModule):
 
             # align_corner=True provides higher performance
             aligned = True
-            mode = 'bilinear' if aligned else 'nearest'
-            valid_ref_feats = 0.
+            mode = "bilinear" if aligned else "nearest"
+            valid_ref_feats = 0.0
             for ii in range(len(img_feats)):
                 img_feat = F.grid_sample(
                     img_feats[ii][camera_id].unsqueeze(0),
                     valid_grid,
                     mode=mode,
-                    padding_mode='zeros',
-                    align_corners=False)  # 1xCx1xN feats
+                    padding_mode="zeros",
+                    align_corners=False,
+                )  # 1xCx1xN feats
                 valid_ref_feats += img_feat
             valid_ref_feats = valid_ref_feats.squeeze(-2).permute(0, 2, 1)
 
             valid_grid = valid_grid.permute(0, 2, 1, 3).repeat(1, 1, self.num_levels, 1)
-            src_flattens = []; spatial_shapes = []
+            src_flattens = []
+            spatial_shapes = []
             lvl_pos_embed_flatten = []
-            img_feats_per_camera = [img_feat[camera_id: camera_id+1] for img_feat in img_feats]
+            img_feats_per_camera = [
+                img_feat[camera_id : camera_id + 1] for img_feat in img_feats
+            ]
             for i in range(len(img_feats_per_camera)):
                 bs, c, h, w = img_feats_per_camera[i].shape
                 spatial_shapes.append((h, w))
-                flatten_feat = img_feats_per_camera[i].view(bs, c, h, w).flatten(2).transpose(1, 2)
+                flatten_feat = (
+                    img_feats_per_camera[i].view(bs, c, h, w).flatten(2).transpose(1, 2)
+                )
                 src_flattens.append(flatten_feat)
             value_flatten = torch.cat(src_flattens, 1)
-            spatial_shapes = torch.as_tensor(spatial_shapes, dtype=torch.long, device=flatten_feat.device)
-            level_start_index = torch.cat((spatial_shapes.new_zeros((1, )), spatial_shapes.prod(1).cumsum(0)[:-1]))
+            spatial_shapes = torch.as_tensor(
+                spatial_shapes, dtype=torch.long, device=flatten_feat.device
+            )
+            level_start_index = torch.cat(
+                (spatial_shapes.new_zeros((1,)), spatial_shapes.prod(1).cumsum(0)[:-1])
+            )
             valid_pts_feats = pts_feats[assign_idx].unsqueeze(0)
 
             # valid_ref_feats = self.img_proj(valid_ref_feats)
             # valid_pts_feats = self.pts_proj(valid_pts_feats)
 
-            if self.multi_input == 'concat':
+            if self.multi_input == "concat":
                 query_feat = torch.cat([valid_ref_feats, valid_pts_feats], dim=-1)
-            elif self.multi_input == 'multiply':
+            elif self.multi_input == "multiply":
                 query_feat = valid_ref_feats * valid_pts_feats
-            elif self.multi_input == 'multiply_pts_detach':
+            elif self.multi_input == "multiply_pts_detach":
                 query_feat = valid_ref_feats * valid_pts_feats.detach()
-            elif self.multi_input == 'pts':
+            elif self.multi_input == "pts":
                 query_feat = valid_pts_feats
-            elif self.multi_input == 'pts_detach':
+            elif self.multi_input == "pts_detach":
                 query_feat = valid_pts_feats.detach()
-            elif self.multi_input == 'img':
+            elif self.multi_input == "img":
                 query_feat = valid_ref_feats
-            elif self.multi_input == 'img_detach':
+            elif self.multi_input == "img_detach":
                 query_feat = valid_ref_feats.detach()
             else:
                 raise Exception
@@ -447,32 +501,45 @@ class MultiVoxelDeformFusion(BaseModule):
 
             if valid_grid.shape[-1] == 2:
                 offset_normalizer = torch.stack(
-                    [spatial_shapes[..., 1], spatial_shapes[..., 0]], -1)
-                sampling_locations = valid_grid[:, :, None, :, None, :] \
-                    + sampling_offsets \
-                    / offset_normalizer[None, None, None, :, None, :]
+                    [spatial_shapes[..., 1], spatial_shapes[..., 0]], -1
+                )
+                sampling_locations = (
+                    valid_grid[:, :, None, :, None, :]
+                    + sampling_offsets / offset_normalizer[None, None, None, :, None, :]
+                )
             elif valid_grid.shape[-1] == 4:
-                sampling_locations = valid_grid[:, :, None, :, None, :2] \
-                    + sampling_offsets / self.num_points \
-                    * reference_points_cam[:, :, None, :, None, 2:] \
+                sampling_locations = (
+                    valid_grid[:, :, None, :, None, :2]
+                    + sampling_offsets
+                    / self.num_points
+                    * reference_points_cam[:, :, None, :, None, 2:]
                     * 0.5
+                )
             else:
                 raise ValueError(
-                    f'Last dim of reference_points must be'
-                    f' 2 or 4, but get {reference_points_cam.shape[-1]} instead.')
-            
+                    f"Last dim of reference_points must be"
+                    f" 2 or 4, but get {reference_points_cam.shape[-1]} instead."
+                )
+
             from IPython import embed
-            embed(header='xxx')
+
+            embed(header="xxx")
 
             if torch.cuda.is_available() and value_flatten.is_cuda:
                 output = MultiScaleDeformableAttnFunction.apply(
-                    value_flatten, spatial_shapes, level_start_index, sampling_locations,
-                    attention_weights, self.im2col_step)
+                    value_flatten,
+                    spatial_shapes,
+                    level_start_index,
+                    sampling_locations,
+                    attention_weights,
+                    self.im2col_step,
+                )
             else:
                 # WON'T REACH HERE
                 print("Won't Reach Here")
                 output = multi_scale_deformable_attn_pytorch(
-                    value_flatten, spatial_shapes, sampling_locations, attention_weights)
+                    value_flatten, spatial_shapes, sampling_locations, attention_weights
+                )
             output = output + valid_ref_feats
             final_img_pts[assign_idx] = output.squeeze(0)
         return final_img_pts

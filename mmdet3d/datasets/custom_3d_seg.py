@@ -41,6 +41,7 @@ class Custom3DSegDataset(Dataset):
             data. For scenes with many points, we may sample it several times.
             Defaults to None.
     """
+
     # names of all classes data used for the task
     CLASSES = None
 
@@ -53,17 +54,19 @@ class Custom3DSegDataset(Dataset):
     # official color for visualization
     PALETTE = None
 
-    def __init__(self,
-                 data_root,
-                 ann_file,
-                 pipeline=None,
-                 classes=None,
-                 palette=None,
-                 modality=None,
-                 test_mode=False,
-                 ignore_index=None,
-                 scene_idxs=None,
-                 file_client_args=dict(backend='disk')):
+    def __init__(
+        self,
+        data_root,
+        ann_file,
+        pipeline=None,
+        classes=None,
+        palette=None,
+        modality=None,
+        test_mode=False,
+        ignore_index=None,
+        scene_idxs=None,
+        file_client_args=dict(backend="disk"),
+    ):
         super().__init__()
         self.data_root = data_root
         self.ann_file = ann_file
@@ -72,26 +75,25 @@ class Custom3DSegDataset(Dataset):
         self.file_client = mmcv.FileClient(**file_client_args)
 
         # load annotations
-        if hasattr(self.file_client, 'get_local_path'):
+        if hasattr(self.file_client, "get_local_path"):
             with self.file_client.get_local_path(self.ann_file) as local_path:
-                self.data_infos = self.load_annotations(open(local_path, 'rb'))
+                self.data_infos = self.load_annotations(open(local_path, "rb"))
         else:
             warnings.warn(
-                'The used MMCV version does not have get_local_path. '
-                f'We treat the {self.ann_file} as local paths and it '
-                'might cause errors if the path is not a local path. '
-                'Please use MMCV>= 1.3.16 if you meet errors.')
+                "The used MMCV version does not have get_local_path. "
+                f"We treat the {self.ann_file} as local paths and it "
+                "might cause errors if the path is not a local path. "
+                "Please use MMCV>= 1.3.16 if you meet errors."
+            )
             self.data_infos = self.load_annotations(self.ann_file)
 
         if pipeline is not None:
             self.pipeline = Compose(pipeline)
 
-        self.ignore_index = len(self.CLASSES) if \
-            ignore_index is None else ignore_index
+        self.ignore_index = len(self.CLASSES) if ignore_index is None else ignore_index
 
         self.scene_idxs = self.get_scene_idxs(scene_idxs)
-        self.CLASSES, self.PALETTE = \
-            self.get_classes_and_palette(classes, palette)
+        self.CLASSES, self.PALETTE = self.get_classes_and_palette(classes, palette)
 
         # set group flag for the sampler
         if not self.test_mode:
@@ -107,7 +109,7 @@ class Custom3DSegDataset(Dataset):
             list[dict]: List of annotations.
         """
         # loading data from a file-like object needs file format
-        return mmcv.load(ann_file, file_format='pkl')
+        return mmcv.load(ann_file, file_format="pkl")
 
     def get_data_info(self, index):
         """Get data info according to the given index.
@@ -125,17 +127,16 @@ class Custom3DSegDataset(Dataset):
                 - ann_info (dict): Annotation info.
         """
         info = self.data_infos[index]
-        sample_idx = info['point_cloud']['lidar_idx']
-        pts_filename = osp.join(self.data_root, info['pts_path'])
+        sample_idx = info["point_cloud"]["lidar_idx"]
+        pts_filename = osp.join(self.data_root, info["pts_path"])
 
         input_dict = dict(
-            pts_filename=pts_filename,
-            sample_idx=sample_idx,
-            file_name=pts_filename)
+            pts_filename=pts_filename, sample_idx=sample_idx, file_name=pts_filename
+        )
 
         if not self.test_mode:
             annos = self.get_ann_info(index)
-            input_dict['ann_info'] = annos
+            input_dict["ann_info"] = annos
         return input_dict
 
     def pre_pipeline(self, results):
@@ -150,12 +151,12 @@ class Custom3DSegDataset(Dataset):
                 - mask_fields (list): Fields of masks.
                 - seg_fields (list): Segment fields.
         """
-        results['img_fields'] = []
-        results['pts_mask_fields'] = []
-        results['pts_seg_fields'] = []
-        results['mask_fields'] = []
-        results['seg_fields'] = []
-        results['bbox3d_fields'] = []
+        results["img_fields"] = []
+        results["pts_mask_fields"] = []
+        results["pts_seg_fields"] = []
+        results["mask_fields"] = []
+        results["seg_fields"] = []
+        results["bbox3d_fields"] = []
 
     def prepare_train_data(self, index):
         """Training data preparation.
@@ -207,17 +208,13 @@ class Custom3DSegDataset(Dataset):
             self.custom_classes = False
             # map id in the loaded mask to label used for training
             self.label_map = {
-                cls_id: self.ignore_index
-                for cls_id in self.ALL_CLASS_IDS
+                cls_id: self.ignore_index for cls_id in self.ALL_CLASS_IDS
             }
             self.label_map.update(
-                {cls_id: i
-                 for i, cls_id in enumerate(self.VALID_CLASS_IDS)})
+                {cls_id: i for i, cls_id in enumerate(self.VALID_CLASS_IDS)}
+            )
             # map label to category name
-            self.label2cat = {
-                i: cat_name
-                for i, cat_name in enumerate(self.CLASSES)
-            }
+            self.label2cat = {i: cat_name for i, cat_name in enumerate(self.CLASSES)}
             return self.CLASSES, self.PALETTE
 
         self.custom_classes = True
@@ -227,11 +224,11 @@ class Custom3DSegDataset(Dataset):
         elif isinstance(classes, (tuple, list)):
             class_names = classes
         else:
-            raise ValueError(f'Unsupported type {type(classes)} of classes.')
+            raise ValueError(f"Unsupported type {type(classes)} of classes.")
 
         if self.CLASSES:
             if not set(class_names).issubset(self.CLASSES):
-                raise ValueError('classes is not a subset of CLASSES.')
+                raise ValueError("classes is not a subset of CLASSES.")
 
             # update valid_class_ids
             self.VALID_CLASS_IDS = [
@@ -243,21 +240,16 @@ class Custom3DSegDataset(Dataset):
             # are the new label ids.
             # used for changing pixel labels in load_annotations.
             self.label_map = {
-                cls_id: self.ignore_index
-                for cls_id in self.ALL_CLASS_IDS
+                cls_id: self.ignore_index for cls_id in self.ALL_CLASS_IDS
             }
             self.label_map.update(
-                {cls_id: i
-                 for i, cls_id in enumerate(self.VALID_CLASS_IDS)})
-            self.label2cat = {
-                i: cat_name
-                for i, cat_name in enumerate(class_names)
-            }
+                {cls_id: i for i, cls_id in enumerate(self.VALID_CLASS_IDS)}
+            )
+            self.label2cat = {i: cat_name for i, cat_name in enumerate(class_names)}
 
         # modify palette for visualization
         palette = [
-            self.PALETTE[self.CLASSES.index(cls_name)]
-            for cls_name in class_names
+            self.PALETTE[self.CLASSES.index(cls_name)] for cls_name in class_names
         ]
 
         return class_names, palette
@@ -283,10 +275,7 @@ class Custom3DSegDataset(Dataset):
 
         return scene_idxs.astype(np.int32)
 
-    def format_results(self,
-                       outputs,
-                       pklfile_prefix=None,
-                       submission_prefix=None):
+    def format_results(self, outputs, pklfile_prefix=None, submission_prefix=None):
         """Format the results to pkl file.
 
         Args:
@@ -302,18 +291,14 @@ class Custom3DSegDataset(Dataset):
         """
         if pklfile_prefix is None:
             tmp_dir = tempfile.TemporaryDirectory()
-            pklfile_prefix = osp.join(tmp_dir.name, 'results')
-            out = f'{pklfile_prefix}.pkl'
+            pklfile_prefix = osp.join(tmp_dir.name, "results")
+            out = f"{pklfile_prefix}.pkl"
         mmcv.dump(outputs, out)
         return outputs, tmp_dir
 
-    def evaluate(self,
-                 results,
-                 metric=None,
-                 logger=None,
-                 show=False,
-                 out_dir=None,
-                 pipeline=None):
+    def evaluate(
+        self, results, metric=None, logger=None, show=False, out_dir=None, pipeline=None
+    ):
         """Evaluate.
 
         Evaluation in semantic segmentation protocol.
@@ -334,19 +319,20 @@ class Custom3DSegDataset(Dataset):
             dict: Evaluation results.
         """
         from mmdet3d.core.evaluation import seg_eval
+
         assert isinstance(
-            results, list), f'Expect results to be list, got {type(results)}.'
-        assert len(results) > 0, 'Expect length of results > 0.'
+            results, list
+        ), f"Expect results to be list, got {type(results)}."
+        assert len(results) > 0, "Expect length of results > 0."
         assert len(results) == len(self.data_infos)
         assert isinstance(
             results[0], dict
-        ), f'Expect elements in results to be dict, got {type(results[0])}.'
+        ), f"Expect elements in results to be dict, got {type(results[0])}."
 
         load_pipeline = self._get_pipeline(pipeline)
-        pred_sem_masks = [result['semantic_mask'] for result in results]
+        pred_sem_masks = [result["semantic_mask"] for result in results]
         gt_sem_masks = [
-            self._extract_data(
-                i, load_pipeline, 'pts_semantic_mask', load_annos=True)
+            self._extract_data(i, load_pipeline, "pts_semantic_mask", load_annos=True)
             for i in range(len(self.data_infos))
         ]
         ret_dict = seg_eval(
@@ -354,7 +340,8 @@ class Custom3DSegDataset(Dataset):
             pred_sem_masks,
             self.label2cat,
             self.ignore_index,
-            logger=logger)
+            logger=logger,
+        )
 
         if show:
             self.show(pred_sem_masks, out_dir, pipeline=pipeline)
@@ -372,8 +359,10 @@ class Custom3DSegDataset(Dataset):
 
     def _build_default_pipeline(self):
         """Build the default pipeline for this dataset."""
-        raise NotImplementedError('_build_default_pipeline is not implemented '
-                                  f'for dataset {self.__class__.__name__}')
+        raise NotImplementedError(
+            "_build_default_pipeline is not implemented "
+            f"for dataset {self.__class__.__name__}"
+        )
 
     def _get_pipeline(self, pipeline):
         """Get data loading pipeline in self.show/evaluate function.
@@ -383,10 +372,11 @@ class Custom3DSegDataset(Dataset):
                 get from self.pipeline.
         """
         if pipeline is None:
-            if not hasattr(self, 'pipeline') or self.pipeline is None:
+            if not hasattr(self, "pipeline") or self.pipeline is None:
                 warnings.warn(
-                    'Use default pipeline for data loading, this may cause '
-                    'errors when data is on ceph')
+                    "Use default pipeline for data loading, this may cause "
+                    "errors when data is on ceph"
+                )
                 return self._build_default_pipeline()
             loading_pipeline = get_loading_pipeline(self.pipeline.transforms)
             return Compose(loading_pipeline)
@@ -406,7 +396,7 @@ class Custom3DSegDataset(Dataset):
             np.ndarray | torch.Tensor | list[np.ndarray | torch.Tensor]:
                 A single or a list of loaded data.
         """
-        assert pipeline is not None, 'data loading pipeline is not provided'
+        assert pipeline is not None, "data loading pipeline is not provided"
         # when we want to load ground-truth via pipeline (e.g. bbox, seg mask)
         # we need to set self.test_mode as False so that we have 'annos'
         if load_annos:

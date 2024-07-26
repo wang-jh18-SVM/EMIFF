@@ -21,8 +21,7 @@ def rotated_iou_3d_loss(pred, target):
     Returns:
         torch.Tensor: IoU loss between predictions and targets.
     """
-    iou_loss = 1 - diff_iou_rotated_3d(pred.unsqueeze(0),
-                                       target.unsqueeze(0))[0]
+    iou_loss = 1 - diff_iou_rotated_3d(pred.unsqueeze(0), target.unsqueeze(0))[0]
     return iou_loss
 
 
@@ -36,18 +35,20 @@ class RotatedIoU3DLoss(nn.Module):
         loss_weight (float, optional): Weight of loss. Defaults to 1.0.
     """
 
-    def __init__(self, reduction='mean', loss_weight=1.0):
+    def __init__(self, reduction="mean", loss_weight=1.0):
         super().__init__()
         self.reduction = reduction
         self.loss_weight = loss_weight
 
-    def forward(self,
-                pred,
-                target,
-                weight=None,
-                avg_factor=None,
-                reduction_override=None,
-                **kwargs):
+    def forward(
+        self,
+        pred,
+        target,
+        weight=None,
+        avg_factor=None,
+        reduction_override=None,
+        **kwargs
+    ):
         """Forward function of loss calculation.
 
         Args:
@@ -68,17 +69,12 @@ class RotatedIoU3DLoss(nn.Module):
         """
         if weight is not None and not torch.any(weight > 0):
             return pred.sum() * weight.sum()  # 0
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
+        assert reduction_override in (None, "none", "mean", "sum")
+        reduction = reduction_override if reduction_override else self.reduction
         if weight is not None and weight.dim() > 1:
             weight = weight.mean(-1)
         loss = self.loss_weight * rotated_iou_3d_loss(
-            pred,
-            target,
-            weight,
-            reduction=reduction,
-            avg_factor=avg_factor,
-            **kwargs)
+            pred, target, weight, reduction=reduction, avg_factor=avg_factor, **kwargs
+        )
 
         return loss

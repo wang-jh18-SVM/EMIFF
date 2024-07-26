@@ -12,6 +12,7 @@ class Instance:
         mesh_vert_instances (np.array): Instance ids for each point.
         instance_id: Id of single instance.
     """
+
     instance_id = 0
     label_id = 0
     vert_count = 0
@@ -23,8 +24,7 @@ class Instance:
             return
         self.instance_id = int(instance_id)
         self.label_id = int(self.get_label_id(instance_id))
-        self.vert_count = int(
-            self.get_instance_verts(mesh_vert_instances, instance_id))
+        self.vert_count = int(self.get_instance_verts(mesh_vert_instances, instance_id))
 
     @staticmethod
     def get_label_id(instance_id):
@@ -35,28 +35,27 @@ class Instance:
         return (mesh_vert_instances == instance_id).sum()
 
     def to_json(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
     def to_dict(self):
         dict = {}
-        dict['instance_id'] = self.instance_id
-        dict['label_id'] = self.label_id
-        dict['vert_count'] = self.vert_count
-        dict['med_dist'] = self.med_dist
-        dict['dist_conf'] = self.dist_conf
+        dict["instance_id"] = self.instance_id
+        dict["label_id"] = self.label_id
+        dict["vert_count"] = self.vert_count
+        dict["med_dist"] = self.med_dist
+        dict["dist_conf"] = self.dist_conf
         return dict
 
     def from_json(self, data):
-        self.instance_id = int(data['instance_id'])
-        self.label_id = int(data['label_id'])
-        self.vert_count = int(data['vert_count'])
-        if 'med_dist' in data:
-            self.med_dist = float(data['med_dist'])
-            self.dist_conf = float(data['dist_conf'])
+        self.instance_id = int(data["instance_id"])
+        self.label_id = int(data["label_id"])
+        self.vert_count = int(data["vert_count"])
+        if "med_dist" in data:
+            self.med_dist = float(data["med_dist"])
+            self.dist_conf = float(data["dist_conf"])
 
     def __str__(self):
-        return '(' + str(self.instance_id) + ')'
+        return "(" + str(self.instance_id) + ")"
 
 
 def get_instances(ids, class_ids, class_labels, id2label):

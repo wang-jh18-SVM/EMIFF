@@ -29,21 +29,24 @@ class DGCNNBackbone(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels,
-                 num_samples=(20, 20, 20),
-                 knn_modes=('D-KNN', 'F-KNN', 'F-KNN'),
-                 radius=(None, None, None),
-                 gf_channels=((64, 64), (64, 64), (64, )),
-                 fa_channels=(1024, ),
-                 act_cfg=dict(type='ReLU'),
-                 init_cfg=None):
+    def __init__(
+        self,
+        in_channels,
+        num_samples=(20, 20, 20),
+        knn_modes=("D-KNN", "F-KNN", "F-KNN"),
+        radius=(None, None, None),
+        gf_channels=((64, 64), (64, 64), (64,)),
+        fa_channels=(1024,),
+        act_cfg=dict(type="ReLU"),
+        init_cfg=None,
+    ):
         super().__init__(init_cfg=init_cfg)
         self.num_gf = len(gf_channels)
 
-        assert len(num_samples) == len(knn_modes) == len(radius) == len(
-            gf_channels), 'Num_samples, knn_modes, radius and gf_channels \
-            should have the same length.'
+        assert (
+            len(num_samples) == len(knn_modes) == len(radius) == len(gf_channels)
+        ), "Num_samples, knn_modes, radius and gf_channels \
+            should have the same length."
 
         self.GF_modules = nn.ModuleList()
         gf_in_channel = in_channels * 2
@@ -60,7 +63,9 @@ class DGCNNBackbone(BaseModule):
                     num_sample=num_samples[gf_index],
                     knn_mode=knn_modes[gf_index],
                     radius=radius[gf_index],
-                    act_cfg=act_cfg))
+                    act_cfg=act_cfg,
+                )
+            )
             skip_channel_list.append(gf_out_channel)
             gf_in_channel = gf_out_channel * 2
 
@@ -68,10 +73,9 @@ class DGCNNBackbone(BaseModule):
         cur_fa_mlps = list(fa_channels)
         cur_fa_mlps = [fa_in_channel] + cur_fa_mlps
 
-        self.FA_module = DGCNNFAModule(
-            mlp_channels=cur_fa_mlps, act_cfg=act_cfg)
+        self.FA_module = DGCNNFAModule(mlp_channels=cur_fa_mlps, act_cfg=act_cfg)
 
-    @auto_fp16(apply_to=('points', ))
+    @auto_fp16(apply_to=("points",))
     def forward(self, points):
         """Forward pass.
 

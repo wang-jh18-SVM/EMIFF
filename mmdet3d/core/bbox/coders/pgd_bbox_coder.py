@@ -15,14 +15,16 @@ class PGDBBoxCoder(FCOS3DBBoxCoder):
         # TODO: refactor the encoder codes in the FCOS3D and PGD head
         pass
 
-    def decode_2d(self,
-                  bbox,
-                  scale,
-                  stride,
-                  max_regress_range,
-                  training,
-                  pred_keypoints=False,
-                  pred_bbox2d=True):
+    def decode_2d(
+        self,
+        bbox,
+        scale,
+        stride,
+        max_regress_range,
+        training,
+        pred_keypoints=False,
+        pred_bbox2d=True,
+    ):
         """Decode regressed 2D attributes.
 
         Args:
@@ -46,9 +48,11 @@ class PGDBBoxCoder(FCOS3DBBoxCoder):
         if pred_keypoints:
             scale_kpts = scale[3]
             # 2 dimension of offsets x 8 corners of a 3D bbox
-            bbox[:, self.bbox_code_size:self.bbox_code_size + 16] = \
-                torch.tanh(scale_kpts(clone_bbox[
-                    :, self.bbox_code_size:self.bbox_code_size + 16]).float())
+            bbox[:, self.bbox_code_size : self.bbox_code_size + 16] = torch.tanh(
+                scale_kpts(
+                    clone_bbox[:, self.bbox_code_size : self.bbox_code_size + 16]
+                ).float()
+            )
 
         if pred_bbox2d:
             scale_bbox2d = scale[-1]
@@ -61,8 +65,8 @@ class PGDBBoxCoder(FCOS3DBBoxCoder):
             if not training:
                 if pred_keypoints:
                     bbox[
-                        :, self.bbox_code_size:self.bbox_code_size + 16] *= \
-                           max_regress_range
+                        :, self.bbox_code_size : self.bbox_code_size + 16
+                    ] *= max_regress_range
                 if pred_bbox2d:
                     bbox[:, -4:] *= stride
         else:
@@ -70,8 +74,9 @@ class PGDBBoxCoder(FCOS3DBBoxCoder):
                 bbox[:, -4:] = bbox.clone()[:, -4:].exp()
         return bbox
 
-    def decode_prob_depth(self, depth_cls_preds, depth_range, depth_unit,
-                          division, num_depth_cls):
+    def decode_prob_depth(
+        self, depth_cls_preds, depth_range, depth_unit, division, num_depth_cls
+    ):
         """Decode probabilistic depth map.
 
         Args:
@@ -86,43 +91,52 @@ class PGDBBoxCoder(FCOS3DBBoxCoder):
         Returns:
             torch.Tensor: Decoded probabilistic depth estimation.
         """
-        if division == 'uniform':
-            depth_multiplier = depth_unit * \
-                depth_cls_preds.new_tensor(
-                    list(range(num_depth_cls))).reshape([1, -1])
-            prob_depth_preds = (F.softmax(depth_cls_preds.clone(), dim=-1) *
-                                depth_multiplier).sum(dim=-1)
+        if division == "uniform":
+            depth_multiplier = depth_unit * depth_cls_preds.new_tensor(
+                list(range(num_depth_cls))
+            ).reshape([1, -1])
+            prob_depth_preds = (
+                F.softmax(depth_cls_preds.clone(), dim=-1) * depth_multiplier
+            ).sum(dim=-1)
             return prob_depth_preds
-        elif division == 'linear':
-            split_pts = depth_cls_preds.new_tensor(list(
-                range(num_depth_cls))).reshape([1, -1])
-            depth_multiplier = depth_range[0] + (
-                depth_range[1] - depth_range[0]) / \
-                (num_depth_cls * (num_depth_cls - 1)) * \
-                (split_pts * (split_pts+1))
-            prob_depth_preds = (F.softmax(depth_cls_preds.clone(), dim=-1) *
-                                depth_multiplier).sum(dim=-1)
+        elif division == "linear":
+            split_pts = depth_cls_preds.new_tensor(list(range(num_depth_cls))).reshape(
+                [1, -1]
+            )
+            depth_multiplier = depth_range[0] + (depth_range[1] - depth_range[0]) / (
+                num_depth_cls * (num_depth_cls - 1)
+            ) * (split_pts * (split_pts + 1))
+            prob_depth_preds = (
+                F.softmax(depth_cls_preds.clone(), dim=-1) * depth_multiplier
+            ).sum(dim=-1)
             return prob_depth_preds
-        elif division == 'log':
-            split_pts = depth_cls_preds.new_tensor(list(
-                range(num_depth_cls))).reshape([1, -1])
+        elif division == "log":
+            split_pts = depth_cls_preds.new_tensor(list(range(num_depth_cls))).reshape(
+                [1, -1]
+            )
             start = max(depth_range[0], 1)
             end = depth_range[1]
-            depth_multiplier = (np.log(start) +
-                                split_pts * np.log(end / start) /
-                                (num_depth_cls - 1)).exp()
-            prob_depth_preds = (F.softmax(depth_cls_preds.clone(), dim=-1) *
-                                depth_multiplier).sum(dim=-1)
+            depth_multiplier = (
+                np.log(start) + split_pts * np.log(end / start) / (num_depth_cls - 1)
+            ).exp()
+            prob_depth_preds = (
+                F.softmax(depth_cls_preds.clone(), dim=-1) * depth_multiplier
+            ).sum(dim=-1)
             return prob_depth_preds
-        elif division == 'loguniform':
-            split_pts = depth_cls_preds.new_tensor(list(
-                range(num_depth_cls))).reshape([1, -1])
+        elif division == "loguniform":
+            split_pts = depth_cls_preds.new_tensor(list(range(num_depth_cls))).reshape(
+                [1, -1]
+            )
             start = max(depth_range[0], 1)
             end = depth_range[1]
-            log_multiplier = np.log(start) + \
-                split_pts * np.log(end / start) / (num_depth_cls - 1)
-            prob_depth_preds = (F.softmax(depth_cls_preds.clone(), dim=-1) *
-                                log_multiplier).sum(dim=-1).exp()
+            log_multiplier = np.log(start) + split_pts * np.log(end / start) / (
+                num_depth_cls - 1
+            )
+            prob_depth_preds = (
+                (F.softmax(depth_cls_preds.clone(), dim=-1) * log_multiplier)
+                .sum(dim=-1)
+                .exp()
+            )
             return prob_depth_preds
         else:
             raise NotImplementedError

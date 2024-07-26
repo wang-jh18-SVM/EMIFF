@@ -39,7 +39,7 @@ class QuickCumsum(torch.autograd.Function):
         """
         x = x.cumsum(0)
         kept = torch.ones(x.shape[0], device=x.device, dtype=torch.bool)
-        kept[:-1] = (ranks[1:] != ranks[:-1])
+        kept[:-1] = ranks[1:] != ranks[:-1]
 
         x, coor = x[kept], coor[kept]
         x = torch.cat((x[:1], x[1:] - x[:-1]))
@@ -66,7 +66,7 @@ class QuickCumsum(torch.autograd.Function):
             torch.tensor: Gradient of the input parameter 'x' in the forword
                 function.
         """
-        kept, = ctx.saved_tensors
+        (kept,) = ctx.saved_tensors
         back = torch.cumsum(kept, 0)
         back[kept] -= 1
 
@@ -97,20 +97,23 @@ class LSSViewTransformer(BaseModule):
             voxel during the acceleration.
     """
 
-    def __init__(self,
-                 grid_config,
-                 input_size,
-                 downsample,
-                 in_channels,
-                 out_channels,
-                 accelerate=False,
-                 max_voxel_points=300):
+    def __init__(
+        self,
+        grid_config,
+        input_size,
+        downsample,
+        in_channels,
+        out_channels,
+        accelerate=False,
+        max_voxel_points=300,
+    ):
         super(LSSViewTransformer, self).__init__()
         self.create_grid_infos(**grid_config)
-        self.create_frustum(grid_config['depth'], input_size, downsample)
+        self.create_frustum(grid_config["depth"], input_size, downsample)
         self.out_channels = out_channels
         self.depth_net = nn.Conv2d(
-            in_channels, self.D + self.out_channels, kernel_size=1, padding=0)
+            in_channels, self.D + self.out_channels, kernel_size=1, padding=0
+        )
         self.accelerate = accelerate
         self.max_voxel_points = max_voxel_points
         self.initial_flag = True
@@ -130,8 +133,7 @@ class LSSViewTransformer(BaseModule):
         """
         self.grid_lower_bound = torch.Tensor([cfg[0] for cfg in [x, y, z]])
         self.grid_interval = torch.Tensor([cfg[2] for cfg in [x, y, z]])
-        self.grid_size = torch.Tensor([(cfg[1] - cfg[0]) / cfg[2]
-                                       for cfg in [x, y, z]])
+        self.grid_size = torch.Tensor([(cfg[1] - cfg[0]) / cfg[2] for cfg in [x, y, z]])
 
     def create_frustum(self, depth_cfg, input_size, downsample):
         """Generate the frustum template for each image.
@@ -146,13 +148,22 @@ class LSSViewTransformer(BaseModule):
         """
         H_in, W_in = input_size
         H_feat, W_feat = H_in // downsample, W_in // downsample
-        d = torch.arange(*depth_cfg, dtype=torch.float)\
-            .view(-1, 1, 1).expand(-1, H_feat, W_feat)
+        d = (
+            torch.arange(*depth_cfg, dtype=torch.float)
+            .view(-1, 1, 1)
+            .expand(-1, H_feat, W_feat)
+        )
         self.D = d.shape[0]
-        x = torch.linspace(0, W_in - 1, W_feat,  dtype=torch.float)\
-            .view(1, 1, W_feat).expand(self.D, H_feat, W_feat)
-        y = torch.linspace(0, H_in - 1, H_feat,  dtype=torch.float)\
-            .view(1, H_feat, 1).expand(self.D, H_feat, W_feat)
+        x = (
+            torch.linspace(0, W_in - 1, W_feat, dtype=torch.float)
+            .view(1, 1, W_feat)
+            .expand(self.D, H_feat, W_feat)
+        )
+        y = (
+            torch.linspace(0, H_in - 1, H_feat, dtype=torch.float)
+            .view(1, H_feat, 1)
+            .expand(self.D, H_feat, W_feat)
+        )
 
         # D x H x W x 3
         self.frustum = torch.stack((x, y, d), -1)
@@ -183,12 +194,16 @@ class LSSViewTransformer(BaseModule):
         # post-transformation
         # B x N x D x H x W x 3
         points = self.frustum.to(rots) - post_trans.view(B, N, 1, 1, 1, 3)
-        points = torch.inverse(post_rots).view(B, N, 1, 1, 1, 3, 3)\
+        points = (
+            torch.inverse(post_rots)
+            .view(B, N, 1, 1, 1, 3, 3)
             .matmul(points.unsqueeze(-1))
+        )
 
         # cam_to_ego
         points = torch.cat(
-            (points[..., :2, :] * points[..., 2:3, :], points[..., 2:3, :]), 5)
+            (points[..., :2, :] * points[..., 2:3, :], points[..., 2:3, :]), 5
+        )
         combine = rots.matmul(torch.inverse(cam2imgs))
         points = combine.view(B, N, 1, 1, 1, 3, 3).matmul(points).squeeze(-1)
         points += trans.view(B, N, 1, 1, 1, 3)
@@ -218,17 +233,26 @@ class LSSViewTransformer(BaseModule):
         # record the index of selected points for acceleration purpose
         point_idx = torch.range(0, num_points - 1, dtype=torch.long)
         # convert coordinate into the voxel space
-        coor = ((coor - self.grid_lower_bound.to(coor)) /
-                self.grid_interval.to(coor))
+        coor = (coor - self.grid_lower_bound.to(coor)) / self.grid_interval.to(coor)
         coor = coor.long().view(num_points, 3)
-        batch_idx = torch.range(0, B-1).reshape(B, 1).\
-            expand(B, num_points // B).view(num_points, 1).to(coor)
+        batch_idx = (
+            torch.range(0, B - 1)
+            .reshape(B, 1)
+            .expand(B, num_points // B)
+            .view(num_points, 1)
+            .to(coor)
+        )
         coor = torch.cat((coor, batch_idx), 1)
 
         # filter out points that are outside box
-        kept = (coor[:, 0] >= 0) & (coor[:, 0] < self.grid_size[0]) & \
-               (coor[:, 1] >= 0) & (coor[:, 1] < self.grid_size[1]) & \
-               (coor[:, 2] >= 0) & (coor[:, 2] < self.grid_size[2])
+        kept = (
+            (coor[:, 0] >= 0)
+            & (coor[:, 0] < self.grid_size[0])
+            & (coor[:, 1] >= 0)
+            & (coor[:, 1] < self.grid_size[1])
+            & (coor[:, 2] >= 0)
+            & (coor[:, 2] < self.grid_size[2])
+        )
         x, coor, point_idx = x[kept], coor[kept], point_idx[kept]
 
         # get tensors from the same voxel next to each other
@@ -258,8 +282,9 @@ class LSSViewTransformer(BaseModule):
 
         # griddify (B x C x Z x X x Y)
         grid_size = self.grid_size.to(torch.long)
-        final = torch.zeros((B, C, grid_size[2], grid_size[1], grid_size[0]),
-                            device=x.device)
+        final = torch.zeros(
+            (B, C, grid_size[2], grid_size[1], grid_size[0]), device=x.device
+        )
         final[coor[:, 3], :, coor[:, 2], coor[:, 1], coor[:, 0]] = x
         # collapse Z
         final = torch.cat(final.unbind(dim=2), 1)
@@ -278,8 +303,7 @@ class LSSViewTransformer(BaseModule):
         """
         x, coor, ranks, point_idx = self.voxel_pooling_prepare(coor, x)
         # count for the repeat times of the same voxel rank in the point queue.
-        repeat_times = torch.ones(
-            coor.shape[0], device=coor.device, dtype=coor.dtype)
+        repeat_times = torch.ones(coor.shape[0], device=coor.device, dtype=coor.dtype)
         times = 0
         repeat_times[0] = 0
         cur_rank = ranks[0]
@@ -319,8 +343,9 @@ class LSSViewTransformer(BaseModule):
 
         # griddify (B x C x Z x X x Y)
         gs = self.grid_size.to(torch.long)
-        final = torch.zeros((B, C, gs[2], gs[1], gs[0], self.max_voxel_points),
-                            device=x.device)
+        final = torch.zeros(
+            (B, C, gs[2], gs[1], gs[0], self.max_voxel_points), device=x.device
+        )
         c = self.coor
         final[c[:, 3], :, c[:, 2], c[:, 1], c[:, 0], c[:, 4]] = x
         final = final.sum(-1)
@@ -343,8 +368,8 @@ class LSSViewTransformer(BaseModule):
         B, N, C, H, W = x.shape
         x = x.view(B * N, C, H, W)
         x = self.depth_net(x)
-        depth = x[:, :self.D].softmax(dim=1)
-        tran_feat = x[:, self.D:(self.D + self.out_channels)]
+        depth = x[:, : self.D].softmax(dim=1)
+        tran_feat = x[:, self.D : (self.D + self.out_channels)]
 
         # Lift
         volume = depth.unsqueeze(1) * tran_feat.unsqueeze(2)

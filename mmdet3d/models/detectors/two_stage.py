@@ -15,19 +15,23 @@ class TwoStage3DDetector(Base3DDetector, TwoStageDetector):
     two-stage 3D detectors.
     """
 
-    def __init__(self,
-                 backbone,
-                 neck=None,
-                 rpn_head=None,
-                 roi_head=None,
-                 train_cfg=None,
-                 test_cfg=None,
-                 pretrained=None,
-                 init_cfg=None):
+    def __init__(
+        self,
+        backbone,
+        neck=None,
+        rpn_head=None,
+        roi_head=None,
+        train_cfg=None,
+        test_cfg=None,
+        pretrained=None,
+        init_cfg=None,
+    ):
         super(TwoStageDetector, self).__init__(init_cfg)
         if pretrained:
-            warnings.warn('DeprecationWarning: pretrained is deprecated, '
-                          'please use "init_cfg" instead')
+            warnings.warn(
+                "DeprecationWarning: pretrained is deprecated, "
+                'please use "init_cfg" instead'
+            )
             backbone.pretrained = pretrained
         self.backbone = build_backbone(backbone)
         self.train_cfg = train_cfg

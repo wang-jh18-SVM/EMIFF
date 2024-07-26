@@ -42,6 +42,8 @@ class Channel(object):
                 "data": self.data,
                 "cur_bytes": self.cur_bytes,
                 "all_bytes": self.all_bytes,
-                "num_frames": self.num_frames if len(self.data) == 0 else self.num_frames + 1,
+                "num_frames": self.num_frames
+                if len(self.data) == 0
+                else self.num_frames + 1,
             }
         )

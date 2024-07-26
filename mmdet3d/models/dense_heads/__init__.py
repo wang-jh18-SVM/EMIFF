@@ -20,9 +20,22 @@ from .vote_head import VoteHead
 from .bevformer_head import BEVFormerHead
 
 __all__ = [
-    'Anchor3DHead', 'FreeAnchor3DHead', 'PartA2RPNHead', 'VoteHead',
-    'SSD3DHead', 'BaseConvBboxHead', 'CenterHead', 'ShapeAwareHead',
-    'BaseMono3DDenseHead', 'AnchorFreeMono3DHead', 'FCOSMono3DHead',
-    'GroupFree3DHead', 'PointRPNHead', 'SMOKEMono3DHead', 'PGDHead',
-    'MonoFlexHead', 'FCAF3DHead','BEVFormerHead'
+    "Anchor3DHead",
+    "FreeAnchor3DHead",
+    "PartA2RPNHead",
+    "VoteHead",
+    "SSD3DHead",
+    "BaseConvBboxHead",
+    "CenterHead",
+    "ShapeAwareHead",
+    "BaseMono3DDenseHead",
+    "AnchorFreeMono3DHead",
+    "FCOSMono3DHead",
+    "GroupFree3DHead",
+    "PointRPNHead",
+    "SMOKEMono3DHead",
+    "PGDHead",
+    "MonoFlexHead",
+    "FCAF3DHead",
+    "BEVFormerHead",
 ]

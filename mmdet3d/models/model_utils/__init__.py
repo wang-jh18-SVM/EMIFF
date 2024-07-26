@@ -4,4 +4,4 @@ from .transformer import GroupFree3DMHA
 from .vote_module import VoteModule
 from .channel import Channel
 
-__all__ = ['VoteModule', 'GroupFree3DMHA', 'EdgeFusionModule','Channel']
+__all__ = ["VoteModule", "GroupFree3DMHA", "EdgeFusionModule", "Channel"]

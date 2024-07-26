@@ -4,7 +4,13 @@ import torch
 from mmdet3d.core import bbox3d2result, build_prior_generator
 from mmdet3d.models.fusion_layers.point_fusion import point_sample
 from mmdet.models.detectors import BaseDetector
-from mmdet3d.models.builder import DETECTORS, build_backbone, build_head, build_neck,build_voxel_encoder
+from mmdet3d.models.builder import (
+    DETECTORS,
+    build_backbone,
+    build_head,
+    build_neck,
+    build_voxel_encoder,
+)
 from torch import nn
 from mmcv.cnn import ConvModule
 from mmcv.runner import force_fp32, auto_fp16
@@ -12,32 +18,31 @@ from mmcv.cnn.bricks.transformer import FFN, build_positional_encoding
 from mmdet.models.utils import build_transformer
 
 
-
 @DETECTORS.register_module()
 class VICFuser_DEFORM(BaseDetector):
     r"""`ImVoxelNet <https://arxiv.org/abs/2106.01178>`_."""
 
-    def __init__(self,
-                 backbone,
-                 neck,
-                 transformer,
-                 bbox_head,
-                #  n_voxels,
-                #  anchor_generator,
-                 bev_h= 150,
-                 bev_w= 150,
-                #  num_query=900,
-                 positional_encoding=dict(
-                     type='SinePositionalEncoding',
-                     num_feats=128,
-                     normalize=True),
-                 train_cfg=None,
-                 test_cfg=None,
-                 pretrained=None,
-                 init_cfg=None):
-        print('VICFuser_DEFORM.__init__')
+    def __init__(
+        self,
+        backbone,
+        neck,
+        transformer,
+        bbox_head,
+        #  n_voxels,
+        #  anchor_generator,
+        bev_h=150,
+        bev_w=150,
+        #  num_query=900,
+        positional_encoding=dict(
+            type="SinePositionalEncoding", num_feats=128, normalize=True
+        ),
+        train_cfg=None,
+        test_cfg=None,
+        pretrained=None,
+        init_cfg=None,
+    ):
+        print("VICFuser_DEFORM.__init__")
         super().__init__(init_cfg=init_cfg)
-
 
         # from IPython import embed
         # embed(header='xxx')
@@ -46,7 +51,7 @@ class VICFuser_DEFORM(BaseDetector):
         self.neck_v = build_neck(neck)
         self.backbone_i = build_backbone(backbone)
         self.neck_i = build_neck(neck)
-        
+
         # self.neck_3d = build_neck(neck_3d)
 
         bbox_head.update(train_cfg=train_cfg)
@@ -72,7 +77,6 @@ class VICFuser_DEFORM(BaseDetector):
 
         self.pc_range = transformer.encoder.pc_range
 
-
         self.real_h = self.pc_range[3] - self.pc_range[0]
         self.real_w = self.pc_range[4] - self.pc_range[1]
         self.bev_h = bev_h
@@ -80,24 +84,21 @@ class VICFuser_DEFORM(BaseDetector):
         self.embed_dims = transformer.embed_dims
         # self.num_query = num_query
 
-
         self.bev_embedding = nn.Embedding(self.bev_h * self.bev_w, self.embed_dims)
         # self.query_embedding = nn.Embedding(self.num_query,self.embed_dims * 2)
         self.positional_encoding = build_positional_encoding(positional_encoding)
         self.transformer = build_transformer(transformer)
 
-
     # @auto_fp16(apply_to=('img'), out_fp32=True)
     def extract_img_feat(self, img, img_metas):
         """Extract features from images."""
 
-        img_v = img[:,0,...]
-        img_i = img[:,1,...]
-        
-        
+        img_v = img[:, 0, ...]
+        img_i = img[:, 1, ...]
+
         x_vs = self.backbone_v(img_v)
         x_vs = self.neck_v(x_vs)
-        
+
         x_is = self.backbone_i(img_i)
         x_is = self.neck_i(x_is)
 
@@ -109,13 +110,11 @@ class VICFuser_DEFORM(BaseDetector):
             # B, C, H, W = x_vs[i].size()
             # img_feat = torch.stack((x_vs[i],x_is[i]),dim=1).permute(1,0,2,3,4) #B,2,C,H,W
             # img_feat = img_feat.contiguous().view(B*N,C,H,W)
-            
-            
-            img_feat = torch.stack((x_vs[i],x_is[i]),dim=1)
+
+            img_feat = torch.stack((x_vs[i], x_is[i]), dim=1)
             img_feats.append(img_feat)
 
         return img_feats
-
 
     def extract_feat(self, img, img_metas):
         """Extract 3d features from the backbone -> fpn -> 3d projection.
@@ -140,34 +139,34 @@ class VICFuser_DEFORM(BaseDetector):
 
         bev_queries = self.bev_embedding.weight.to(dtype)
 
-        bev_mask = torch.zeros((bs, self.bev_h, self.bev_w),
-                               device=bev_queries.device).to(dtype)
+        bev_mask = torch.zeros(
+            (bs, self.bev_h, self.bev_w), device=bev_queries.device
+        ).to(dtype)
         bev_pos = self.positional_encoding(bev_mask).to(dtype)
 
         bev_features = self.transformer.get_bev_features(
-                mlvl_feats,
-                bev_queries,
-                self.bev_h,
-                self.bev_w,
-                grid_length=(self.real_h / self.bev_h,
-                             self.real_w / self.bev_w),
-                bev_pos=bev_pos,
-                img_metas=img_metas,
-                prev_bev=None,
-            )
+            mlvl_feats,
+            bev_queries,
+            self.bev_h,
+            self.bev_w,
+            grid_length=(self.real_h / self.bev_h, self.real_w / self.bev_w),
+            bev_pos=bev_pos,
+            img_metas=img_metas,
+            prev_bev=None,
+        )
 
-        bev_features = bev_features.view(batch_size,self.bev_h,self.bev_w,self.embed_dims).permute(0,3,2,1)
+        bev_features = bev_features.view(
+            batch_size, self.bev_h, self.bev_w, self.embed_dims
+        ).permute(0, 3, 2, 1)
         # from IPython import embed
         # embed(header='it works.extract_feat')
 
-
-        # x = self.neck_3d(x)   
-        # Anchor3DHead axis order is (y, x). 
+        # x = self.neck_3d(x)
+        # Anchor3DHead axis order is (y, x).
         # bev_feature [B,C,bev_w,bev_h]
         return [bev_features]
 
-    def forward_train(self, img, img_metas, gt_bboxes_3d, gt_labels_3d,
-                      **kwargs):
+    def forward_train(self, img, img_metas, gt_bboxes_3d, gt_labels_3d, **kwargs):
         """Forward of training.
 
         Args:
@@ -181,7 +180,7 @@ class VICFuser_DEFORM(BaseDetector):
         """
         # from IPython import embed
         # embed(header='VICFuser_BEV.forward_train')
-        
+
         x = self.extract_feat(img, img_metas)
         x = self.bbox_head(x)
         losses = self.bbox_head.loss(*x, gt_bboxes_3d, gt_labels_3d, img_metas)
@@ -197,10 +196,10 @@ class VICFuser_DEFORM(BaseDetector):
         Returns:
             list[dict]: Predicted 3d boxes.
         """
-        
+
         # from IPython import embed
         # embed(header='VICFuser_BEV.forward_test')
-        
+
         # not supporting aug_test for now
         return self.simple_test(img, img_metas)
 
@@ -214,7 +213,7 @@ class VICFuser_DEFORM(BaseDetector):
         Returns:
             list[dict]: Predicted 3d boxes.
         """
-        
+
         # from IPython import embed
         # embed(header='VICFuser_BEV.simple_test')
         x = self.extract_feat(img, img_metas)

@@ -13,12 +13,14 @@ from mmcv.runner.base_module import BaseModule
 
 from mmdet.models.utils.builder import TRANSFORMER
 from torch.nn.init import normal_
+
 # from projects.mmdet3d_plugin.models.utils.visual import save_tensor
 from mmcv.runner.base_module import BaseModule
 from torchvision.transforms.functional import rotate
 from .temporal_self_attention import TemporalSelfAttention
 from .spatial_cross_attention import MSDeformableAttention3D
 from .decoder import CustomMSDeformableAttention
+
 # from projects.mmdet3d_plugin.models.utils.bricks import run_time
 from mmcv.runner import force_fp32, auto_fp16
 
@@ -35,20 +37,22 @@ class PerceptionTransformer(BaseModule):
             `as_two_stage` as True. Default: 300.
     """
 
-    def __init__(self,
-                 num_feature_levels=4,
-                 num_cams=2,
-                 two_stage_num_proposals=300,
-                 encoder=None,
-                 decoder=None,
-                 embed_dims=64,
-                 rotate_prev_bev=True,
-                 use_shift=True,
-                 use_can_bus=True,
-                 can_bus_norm=True,
-                 use_cams_embeds=True,
-                 rotate_center=[100, 100],
-                 **kwargs):
+    def __init__(
+        self,
+        num_feature_levels=4,
+        num_cams=2,
+        two_stage_num_proposals=300,
+        encoder=None,
+        decoder=None,
+        embed_dims=64,
+        rotate_prev_bev=True,
+        use_shift=True,
+        use_can_bus=True,
+        can_bus_norm=True,
+        use_cams_embeds=True,
+        rotate_center=[100, 100],
+        **kwargs
+    ):
         super(PerceptionTransformer, self).__init__(**kwargs)
         self.encoder = build_transformer_layer_sequence(encoder)
         # # self.decoder = build_transformer_layer_sequence(decoder)
@@ -69,10 +73,10 @@ class PerceptionTransformer(BaseModule):
 
     def init_layers(self):
         """Initialize layers of the Detr3DTransformer."""
-        self.level_embeds = nn.Parameter(torch.Tensor(
-            self.num_feature_levels, self.embed_dims))
-        self.cams_embeds = nn.Parameter(
-            torch.Tensor(self.num_cams, self.embed_dims))
+        self.level_embeds = nn.Parameter(
+            torch.Tensor(self.num_feature_levels, self.embed_dims)
+        )
+        self.cams_embeds = nn.Parameter(torch.Tensor(self.num_cams, self.embed_dims))
         # self.reference_points = nn.Linear(self.embed_dims, 3)
         # self.can_bus_mlp = nn.Sequential(
         #     nn.Linear(18, self.embed_dims // 2),
@@ -102,15 +106,16 @@ class PerceptionTransformer(BaseModule):
 
     # @auto_fp16(apply_to=('mlvl_feats', 'bev_queries', 'prev_bev', 'bev_pos'))
     def get_bev_features(
-            self,
-            mlvl_feats,
-            bev_queries,
-            bev_h,
-            bev_w,
-            grid_length=[0.512, 0.512],
-            bev_pos=None,
-            prev_bev=None,
-            **kwargs):
+        self,
+        mlvl_feats,
+        bev_queries,
+        bev_h,
+        bev_w,
+        grid_length=[0.512, 0.512],
+        bev_pos=None,
+        prev_bev=None,
+        **kwargs
+    ):
         """
         obtain bev features.
         """
@@ -121,8 +126,6 @@ class PerceptionTransformer(BaseModule):
         bev_queries = bev_queries.unsqueeze(1).repeat(1, bs, 1)
         bev_pos = bev_pos.flatten(2).permute(2, 0, 1)
 
-
-
         feat_flatten = []
         spatial_shapes = []
         for lvl, feat in enumerate(mlvl_feats):
@@ -131,26 +134,28 @@ class PerceptionTransformer(BaseModule):
             feat = feat.flatten(3).permute(1, 0, 3, 2)
             if self.use_cams_embeds:
                 feat = feat + self.cams_embeds[:, None, None, :].to(feat.dtype)
-            feat = feat + self.level_embeds[None,
-                                            None, lvl:lvl + 1, :].to(feat.dtype)
+            feat = feat + self.level_embeds[None, None, lvl : lvl + 1, :].to(feat.dtype)
             spatial_shapes.append(spatial_shape)
             feat_flatten.append(feat)
 
         feat_flatten = torch.cat(feat_flatten, 2)
         spatial_shapes = torch.as_tensor(
-            spatial_shapes, dtype=torch.long, device=bev_pos.device)
-        level_start_index = torch.cat((spatial_shapes.new_zeros(
-            (1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
+            spatial_shapes, dtype=torch.long, device=bev_pos.device
+        )
+        level_start_index = torch.cat(
+            (spatial_shapes.new_zeros((1,)), spatial_shapes.prod(1).cumsum(0)[:-1])
+        )
 
         feat_flatten = feat_flatten.permute(
-            0, 2, 1, 3)  # (num_cam, H*W, bs, embed_dims)
-        
+            0, 2, 1, 3
+        )  # (num_cam, H*W, bs, embed_dims)
+
         # bev_queries [bev_h*bev_w, bs, embed_dims]
         # bev_pos [bev_h*bev_w, bs, embed_dims]
         # Key: feat_flatten: [num_cam, sum(bev_h*bev_w), bs, embed_dims]
         # Value: feat_flatten: [num_cam, sum(bev_h*bev_w), bs, embed_dims]
 
-        # spatial_shapes: [num_levels, 2] 
+        # spatial_shapes: [num_levels, 2]
         # level_start_index: [num_levels]
 
         bev_embed = self.encoder(
@@ -218,25 +223,25 @@ class PerceptionTransformer(BaseModule):
     #                 be returned when `as_two_stage` is True, \
     #                 otherwise None.
     #     """
-        
+
     #     # print('Enter PerceptionTransformer.forward!!!')
     #     # from IPython import embed
     #     # embed()
-        
+
     #     # mlvl_feats: List
-    #     # mlvl_feats[0]: Tensor [batch_size,num_cam,channels,height,width] 
+    #     # mlvl_feats[0]: Tensor [batch_size,num_cam,channels,height,width]
     #     #                   [1, 6, 256, 23, 40]
     #     # bev_queries [150*150, 256]
     #     # bev_pos [1, 256, 150, 150] bev_position_embedding
     #     # prev_bev [1, 22500, 256]
-        
+
     #     # object_query_embed [900, 512]
     #     # bev_mask [1, 150, 150]
 
     #     # bev_h, bev_w = 150
-    #     # self.real_h = self.pc_range[3] - self.pc_range[0] 
+    #     # self.real_h = self.pc_range[3] - self.pc_range[0]
     #     # self.real_w = self.pc_range[4] - self.pc_range[1]
-        
+
     #     # bev_embed [bs, bev_h*bev_w, embed_dims]
     #     #           [1, 22500, 256]
 

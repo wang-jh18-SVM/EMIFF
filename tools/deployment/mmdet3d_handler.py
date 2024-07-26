@@ -16,10 +16,11 @@ class MMdet3dHandler(BaseHandler):
     Handler to load models in MMDetection3D, and it will process data to get
     predicted results. For now, it only supports SECOND.
     """
+
     threshold = 0.5
     load_dim = 4
     use_dim = [0, 1, 2, 3]
-    coord_type = 'LIDAR'
+    coord_type = "LIDAR"
     attribute_dims = None
 
     def initialize(self, context):
@@ -30,16 +31,18 @@ class MMdet3dHandler(BaseHandler):
                 pertaining to the model artifacts parameters.
         """
         properties = context.system_properties
-        self.map_location = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.device = torch.device(self.map_location + ':' +
-                                   str(properties.get('gpu_id')) if torch.cuda.
-                                   is_available() else self.map_location)
+        self.map_location = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(
+            self.map_location + ":" + str(properties.get("gpu_id"))
+            if torch.cuda.is_available()
+            else self.map_location
+        )
         self.manifest = context.manifest
 
-        model_dir = properties.get('model_dir')
-        serialized_file = self.manifest['model']['serializedFile']
+        model_dir = properties.get("model_dir")
+        serialized_file = self.manifest["model"]["serializedFile"]
         checkpoint = os.path.join(model_dir, serialized_file)
-        self.config_file = os.path.join(model_dir, 'config.py')
+        self.config_file = os.path.join(model_dir, "config.py")
         self.model = init_model(self.config_file, checkpoint, self.device)
         self.initialized = True
 
@@ -56,7 +59,7 @@ class MMdet3dHandler(BaseHandler):
         for row in data:
             # Compat layer: normally the envelope should just return the data
             # directly, but older versions of Torchserve didn't have envelope.
-            pts = row.get('data') or row.get('body')
+            pts = row.get("data") or row.get("body")
             if isinstance(pts, str):
                 pts = base64.b64decode(pts)
 
@@ -65,9 +68,8 @@ class MMdet3dHandler(BaseHandler):
             points = points[:, self.use_dim]
             points_class = get_points_type(self.coord_type)
             points = points_class(
-                points,
-                points_dim=points.shape[-1],
-                attribute_dims=self.attribute_dims)
+                points, points_dim=points.shape[-1], attribute_dims=self.attribute_dims
+            )
 
         return points
 
@@ -104,17 +106,17 @@ class MMdet3dHandler(BaseHandler):
         output = []
         for pts_index, result in enumerate(data):
             output.append([])
-            if 'pts_bbox' in result.keys():
-                pred_bboxes = result['pts_bbox']['boxes_3d'].tensor.numpy()
-                pred_scores = result['pts_bbox']['scores_3d'].numpy()
+            if "pts_bbox" in result.keys():
+                pred_bboxes = result["pts_bbox"]["boxes_3d"].tensor.numpy()
+                pred_scores = result["pts_bbox"]["scores_3d"].numpy()
             else:
-                pred_bboxes = result['boxes_3d'].tensor.numpy()
-                pred_scores = result['scores_3d'].numpy()
+                pred_bboxes = result["boxes_3d"].tensor.numpy()
+                pred_scores = result["scores_3d"].numpy()
 
             index = pred_scores > self.threshold
             bbox_coords = pred_bboxes[index].tolist()
             score = pred_scores[index].tolist()
 
-            output[pts_index].append({'3dbbox': bbox_coords, 'score': score})
+            output[pts_index].append({"3dbbox": bbox_coords, "score": score})
 
         return output

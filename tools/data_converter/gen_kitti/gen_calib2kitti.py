@@ -15,6 +15,7 @@ def convert_calib_v2x_to_kitti(cam_D, cam_K, t_velo2cam, r_velo2cam):
 
     return P2, Tr_velo_to_cam
 
+
 def get_cam_D_and_cam_K(path):
     my_json = read_json(path)
     cam_D = my_json["cam_D"]
@@ -45,7 +46,9 @@ def gen_calib2kitti(path_camera_intrisinc, path_lidar_to_camera, path_calib):
 
         t_velo2cam = np.array(t_velo2cam).reshape(3, 1)
         r_velo2cam = np.array(r_velo2cam).reshape(3, 3)
-        P2, Tr_velo_to_cam = convert_calib_v2x_to_kitti(cam_D, cam_K, t_velo2cam, r_velo2cam)
+        P2, Tr_velo_to_cam = convert_calib_v2x_to_kitti(
+            cam_D, cam_K, t_velo2cam, r_velo2cam
+        )
 
         str_P2 = "P2: "
         str_Tr_velo_to_cam = "Tr_velo_to_cam: "
@@ -78,5 +81,3 @@ def gen_calib2kitti(path_camera_intrisinc, path_lidar_to_camera, path_calib):
                 + str_Tr_imu_to_velo
             )
             fp.write(gt_line)
-
-

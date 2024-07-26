@@ -25,12 +25,12 @@ def dla_build_norm_layer(cfg, num_features):
         Function: Build normalization layer in mmcv.
     """
     cfg_ = cfg.copy()
-    if cfg_['type'] == 'GN':
+    if cfg_["type"] == "GN":
         if num_features % 32 == 0:
             return build_norm_layer(cfg_, num_features)
         else:
-            assert 'num_groups' in cfg_
-            cfg_['num_groups'] = cfg_['num_groups'] // 2
+            assert "num_groups" in cfg_
+            cfg_["num_groups"] = cfg_["num_groups"] // 2
             return build_norm_layer(cfg_, num_features)
     else:
         return build_norm_layer(cfg_, num_features)
@@ -52,14 +52,16 @@ class BasicBlock(BaseModule):
             Default: None.
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 norm_cfg,
-                 conv_cfg,
-                 stride=1,
-                 dilation=1,
-                 init_cfg=None):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        norm_cfg,
+        conv_cfg,
+        stride=1,
+        dilation=1,
+        init_cfg=None,
+    ):
         super(BasicBlock, self).__init__(init_cfg)
         self.conv1 = build_conv_layer(
             conv_cfg,
@@ -69,7 +71,8 @@ class BasicBlock(BaseModule):
             stride=stride,
             padding=dilation,
             dilation=dilation,
-            bias=False)
+            bias=False,
+        )
         self.norm1 = dla_build_norm_layer(norm_cfg, out_channels)[1]
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = build_conv_layer(
@@ -80,7 +83,8 @@ class BasicBlock(BaseModule):
             stride=1,
             padding=dilation,
             dilation=dilation,
-            bias=False)
+            bias=False,
+        )
         self.norm2 = dla_build_norm_layer(norm_cfg, out_channels)[1]
         self.stride = stride
 
@@ -116,14 +120,16 @@ class Root(BaseModule):
             Default: None.
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 norm_cfg,
-                 conv_cfg,
-                 kernel_size,
-                 add_identity,
-                 init_cfg=None):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        norm_cfg,
+        conv_cfg,
+        kernel_size,
+        add_identity,
+        init_cfg=None,
+    ):
         super(Root, self).__init__(init_cfg)
         self.conv = build_conv_layer(
             conv_cfg,
@@ -132,7 +138,8 @@ class Root(BaseModule):
             1,
             stride=1,
             padding=(kernel_size - 1) // 2,
-            bias=False)
+            bias=False,
+        )
         self.norm = dla_build_norm_layer(norm_cfg, out_channels)[1]
         self.relu = nn.ReLU(inplace=True)
         self.add_identity = add_identity
@@ -180,42 +187,42 @@ class Tree(BaseModule):
             Default: None.
     """
 
-    def __init__(self,
-                 levels,
-                 block,
-                 in_channels,
-                 out_channels,
-                 norm_cfg,
-                 conv_cfg,
-                 stride=1,
-                 level_root=False,
-                 root_dim=None,
-                 root_kernel_size=1,
-                 dilation=1,
-                 add_identity=False,
-                 init_cfg=None):
+    def __init__(
+        self,
+        levels,
+        block,
+        in_channels,
+        out_channels,
+        norm_cfg,
+        conv_cfg,
+        stride=1,
+        level_root=False,
+        root_dim=None,
+        root_kernel_size=1,
+        dilation=1,
+        add_identity=False,
+        init_cfg=None,
+    ):
         super(Tree, self).__init__(init_cfg)
         if root_dim is None:
             root_dim = 2 * out_channels
         if level_root:
             root_dim += in_channels
         if levels == 1:
-            self.root = Root(root_dim, out_channels, norm_cfg, conv_cfg,
-                             root_kernel_size, add_identity)
+            self.root = Root(
+                root_dim,
+                out_channels,
+                norm_cfg,
+                conv_cfg,
+                root_kernel_size,
+                add_identity,
+            )
             self.tree1 = block(
-                in_channels,
-                out_channels,
-                norm_cfg,
-                conv_cfg,
-                stride,
-                dilation=dilation)
+                in_channels, out_channels, norm_cfg, conv_cfg, stride, dilation=dilation
+            )
             self.tree2 = block(
-                out_channels,
-                out_channels,
-                norm_cfg,
-                conv_cfg,
-                1,
-                dilation=dilation)
+                out_channels, out_channels, norm_cfg, conv_cfg, 1, dilation=dilation
+            )
         else:
             self.tree1 = Tree(
                 levels - 1,
@@ -228,7 +235,8 @@ class Tree(BaseModule):
                 root_dim=None,
                 root_kernel_size=root_kernel_size,
                 dilation=dilation,
-                add_identity=add_identity)
+                add_identity=add_identity,
+            )
             self.tree2 = Tree(
                 levels - 1,
                 block,
@@ -239,7 +247,8 @@ class Tree(BaseModule):
                 root_dim=root_dim + out_channels,
                 root_kernel_size=root_kernel_size,
                 dilation=dilation,
-                add_identity=add_identity)
+                add_identity=add_identity,
+            )
         self.level_root = level_root
         self.root_dim = root_dim
         self.downsample = None
@@ -250,13 +259,10 @@ class Tree(BaseModule):
         if in_channels != out_channels:
             self.project = nn.Sequential(
                 build_conv_layer(
-                    conv_cfg,
-                    in_channels,
-                    out_channels,
-                    1,
-                    stride=1,
-                    bias=False),
-                dla_build_norm_layer(norm_cfg, out_channels)[1])
+                    conv_cfg, in_channels, out_channels, 1, stride=1, bias=False
+                ),
+                dla_build_norm_layer(norm_cfg, out_channels)[1],
+            )
 
     def forward(self, x, identity=None, children=None):
         children = [] if children is None else children
@@ -301,35 +307,37 @@ class DLANet(BaseModule):
         34: (BasicBlock, (1, 1, 1, 2, 2, 1), (16, 32, 64, 128, 256, 512)),
     }
 
-    def __init__(self,
-                 depth,
-                 in_channels=3,
-                 out_indices=(0, 1, 2, 3, 4, 5),
-                 frozen_stages=-1,
-                 norm_cfg=None,
-                 conv_cfg=None,
-                 layer_with_level_root=(False, True, True, True),
-                 with_identity_root=False,
-                 pretrained=None,
-                 init_cfg=None):
+    def __init__(
+        self,
+        depth,
+        in_channels=3,
+        out_indices=(0, 1, 2, 3, 4, 5),
+        frozen_stages=-1,
+        norm_cfg=None,
+        conv_cfg=None,
+        layer_with_level_root=(False, True, True, True),
+        with_identity_root=False,
+        pretrained=None,
+        init_cfg=None,
+    ):
         super(DLANet, self).__init__(init_cfg)
         if depth not in self.arch_settings:
-            raise KeyError(f'invalida depth {depth} for DLA')
+            raise KeyError(f"invalida depth {depth} for DLA")
 
-        assert not (init_cfg and pretrained), \
-            'init_cfg and pretrained cannot be setting at the same time'
+        assert not (
+            init_cfg and pretrained
+        ), "init_cfg and pretrained cannot be setting at the same time"
         if isinstance(pretrained, str):
-            warnings.warn('DeprecationWarning: pretrained is a deprecated, '
-                          'please use "init_cfg" instead')
-            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+            warnings.warn(
+                "DeprecationWarning: pretrained is a deprecated, "
+                'please use "init_cfg" instead'
+            )
+            self.init_cfg = dict(type="Pretrained", checkpoint=pretrained)
         elif pretrained is None:
             if init_cfg is None:
                 self.init_cfg = [
-                    dict(type='Kaiming', layer='Conv2d'),
-                    dict(
-                        type='Constant',
-                        val=1,
-                        layer=['_BatchNorm', 'GroupNorm'])
+                    dict(type="Kaiming", layer="Conv2d"),
+                    dict(type="Constant", val=1, layer=["_BatchNorm", "GroupNorm"]),
                 ]
 
         block, levels, channels = self.arch_settings[depth]
@@ -340,27 +348,19 @@ class DLANet(BaseModule):
         assert max(out_indices) < self.num_levels
         self.base_layer = nn.Sequential(
             build_conv_layer(
-                conv_cfg,
-                in_channels,
-                channels[0],
-                7,
-                stride=1,
-                padding=3,
-                bias=False),
+                conv_cfg, in_channels, channels[0], 7, stride=1, padding=3, bias=False
+            ),
             dla_build_norm_layer(norm_cfg, channels[0])[1],
-            nn.ReLU(inplace=True))
+            nn.ReLU(inplace=True),
+        )
 
         # DLANet first uses two conv layers then uses several
         # Tree layers
         for i in range(2):
             level_layer = self._make_conv_level(
-                channels[0],
-                channels[i],
-                levels[i],
-                norm_cfg,
-                conv_cfg,
-                stride=i + 1)
-            layer_name = f'level{i}'
+                channels[0], channels[i], levels[i], norm_cfg, conv_cfg, stride=i + 1
+            )
+            layer_name = f"level{i}"
             self.add_module(layer_name, level_layer)
 
         for i in range(2, self.num_levels):
@@ -373,20 +373,23 @@ class DLANet(BaseModule):
                 conv_cfg,
                 2,
                 level_root=layer_with_level_root[i - 2],
-                add_identity=with_identity_root)
-            layer_name = f'level{i}'
+                add_identity=with_identity_root,
+            )
+            layer_name = f"level{i}"
             self.add_module(layer_name, dla_layer)
 
         self._freeze_stages()
 
-    def _make_conv_level(self,
-                         in_channels,
-                         out_channels,
-                         num_convs,
-                         norm_cfg,
-                         conv_cfg,
-                         stride=1,
-                         dilation=1):
+    def _make_conv_level(
+        self,
+        in_channels,
+        out_channels,
+        num_convs,
+        norm_cfg,
+        conv_cfg,
+        stride=1,
+        dilation=1,
+    ):
         """Conv modules.
 
         Args:
@@ -402,19 +405,22 @@ class DLANet(BaseModule):
         """
         modules = []
         for i in range(num_convs):
-            modules.extend([
-                build_conv_layer(
-                    conv_cfg,
-                    in_channels,
-                    out_channels,
-                    3,
-                    stride=stride if i == 0 else 1,
-                    padding=dilation,
-                    bias=False,
-                    dilation=dilation),
-                dla_build_norm_layer(norm_cfg, out_channels)[1],
-                nn.ReLU(inplace=True)
-            ])
+            modules.extend(
+                [
+                    build_conv_layer(
+                        conv_cfg,
+                        in_channels,
+                        out_channels,
+                        3,
+                        stride=stride if i == 0 else 1,
+                        padding=dilation,
+                        bias=False,
+                        dilation=dilation,
+                    ),
+                    dla_build_norm_layer(norm_cfg, out_channels)[1],
+                    nn.ReLU(inplace=True),
+                ]
+            )
             in_channels = out_channels
         return nn.Sequential(*modules)
 
@@ -425,13 +431,13 @@ class DLANet(BaseModule):
                 param.requires_grad = False
 
             for i in range(2):
-                m = getattr(self, f'level{i}')
+                m = getattr(self, f"level{i}")
                 m.eval()
                 for param in m.parameters():
                     param.requires_grad = False
 
         for i in range(1, self.frozen_stages + 1):
-            m = getattr(self, f'level{i+1}')
+            m = getattr(self, f"level{i+1}")
             m.eval()
             for param in m.parameters():
                 param.requires_grad = False
@@ -440,7 +446,7 @@ class DLANet(BaseModule):
         outs = []
         x = self.base_layer(x)
         for i in range(self.num_levels):
-            x = getattr(self, 'level{}'.format(i))(x)
+            x = getattr(self, "level{}".format(i))(x)
             if i in self.out_indices:
                 outs.append(x)
         return tuple(outs)

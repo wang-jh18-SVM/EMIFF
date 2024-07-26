@@ -31,13 +31,13 @@ class MinkResNet(nn.Module):
         34: (BasicBlock, (3, 4, 6, 3)),
         50: (Bottleneck, (3, 4, 6, 3)),
         101: (Bottleneck, (3, 4, 23, 3)),
-        152: (Bottleneck, (3, 8, 36, 3))
+        152: (Bottleneck, (3, 8, 36, 3)),
     }
 
     def __init__(self, depth, in_channels, num_stages=4, pool=True):
         super(MinkResNet, self).__init__()
         if depth not in self.arch_settings:
-            raise KeyError(f'invalid depth {depth} for resnet')
+            raise KeyError(f"invalid depth {depth} for resnet")
         assert 4 >= num_stages >= 1
         block, stage_blocks = self.arch_settings[depth]
         stage_blocks = stage_blocks[:num_stages]
@@ -46,24 +46,25 @@ class MinkResNet(nn.Module):
 
         self.inplanes = 64
         self.conv1 = ME.MinkowskiConvolution(
-            in_channels, self.inplanes, kernel_size=3, stride=2, dimension=3)
+            in_channels, self.inplanes, kernel_size=3, stride=2, dimension=3
+        )
         # May be BatchNorm is better, but we follow original implementation.
         self.norm1 = ME.MinkowskiInstanceNorm(self.inplanes)
         self.relu = ME.MinkowskiReLU(inplace=True)
         if self.pool:
-            self.maxpool = ME.MinkowskiMaxPooling(
-                kernel_size=2, stride=2, dimension=3)
+            self.maxpool = ME.MinkowskiMaxPooling(kernel_size=2, stride=2, dimension=3)
 
         for i, num_blocks in enumerate(stage_blocks):
             setattr(
-                self, f'layer{i + 1}',
-                self._make_layer(block, 64 * 2**i, stage_blocks[i], stride=2))
+                self,
+                f"layer{i + 1}",
+                self._make_layer(block, 64 * 2**i, stage_blocks[i], stride=2),
+            )
 
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, ME.MinkowskiConvolution):
-                ME.utils.kaiming_normal_(
-                    m.kernel, mode='fan_out', nonlinearity='relu')
+                ME.utils.kaiming_normal_(m.kernel, mode="fan_out", nonlinearity="relu")
 
             if isinstance(m, ME.MinkowskiBatchNorm):
                 nn.init.constant_(m.bn.weight, 1)
@@ -78,16 +79,16 @@ class MinkResNet(nn.Module):
                     planes * block.expansion,
                     kernel_size=1,
                     stride=stride,
-                    dimension=3),
-                ME.MinkowskiBatchNorm(planes * block.expansion))
+                    dimension=3,
+                ),
+                ME.MinkowskiBatchNorm(planes * block.expansion),
+            )
         layers = []
         layers.append(
             block(
-                self.inplanes,
-                planes,
-                stride=stride,
-                downsample=downsample,
-                dimension=3))
+                self.inplanes, planes, stride=stride, downsample=downsample, dimension=3
+            )
+        )
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes, stride=1, dimension=3))
@@ -109,6 +110,6 @@ class MinkResNet(nn.Module):
             x = self.maxpool(x)
         outs = []
         for i in range(self.num_stages):
-            x = getattr(self, f'layer{i + 1}')(x)
+            x = getattr(self, f"layer{i + 1}")(x)
             outs.append(x)
         return outs

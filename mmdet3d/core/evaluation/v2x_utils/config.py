@@ -33,7 +33,9 @@ def add_arguments(parser):
     parser.add_argument("--output", type=str, default="")
     parser.add_argument("--split", type=str, default="val")
     parser.add_argument(
-        "--split-data-path", type=str, default="../data/split_datas/example-cooperative-split-data.json"
+        "--split-data-path",
+        type=str,
+        default="../data/split_datas/example-cooperative-split-data.json",
     )
     parser.add_argument("--dataset", type=str, default="vic-sync")
     parser.add_argument("--k", type=int, default=0)
@@ -44,6 +46,11 @@ def add_arguments(parser):
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--save-point-cloud", action="store_true")
     parser.add_argument("--save-image", action="store_true")
-    parser.add_argument("--extended-range", type=float, nargs="+", default=[-10, -49.68, -3, 79.12, 49.68, 1])
+    parser.add_argument(
+        "--extended-range",
+        type=float,
+        nargs="+",
+        default=[-10, -49.68, -3, 79.12, 49.68, 1],
+    )
     parser.add_argument("--sensortype", type=str, default="lidar")
     parser.add_argument("--eval-single", action="store_true")
