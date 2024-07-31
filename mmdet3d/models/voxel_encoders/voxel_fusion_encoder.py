@@ -8,6 +8,7 @@ from .. import builder
 from ..builder import VOXEL_ENCODERS
 from .utils import VFELayer, get_paddings_indicator
 
+
 @VOXEL_ENCODERS.register_module()
 class DynamicFusionVFE(nn.Module):
     """Dynamic Voxel feature encoder used in DV-SECOND.
@@ -38,21 +39,23 @@ class DynamicFusionVFE(nn.Module):
             points. Default to False.
     """
 
-    def __init__(self,
-                 in_channels=4,
-                 feat_channels=[],
-                 with_distance=False,
-                 with_cluster_center=False,
-                 with_voxel_center=False,
-                 voxel_size=(0.2, 0.2, 4),
-                 point_cloud_range=(0, -40, -3, 70.4, 40, 1),
-                 norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
-                 mode='max',
-                 short_cut=False,
-                 fusion_layer=None,
-                 return_point_feats=False):
+    def __init__(
+        self,
+        in_channels=4,
+        feat_channels=[],
+        with_distance=False,
+        with_cluster_center=False,
+        with_voxel_center=False,
+        voxel_size=(0.2, 0.2, 4),
+        point_cloud_range=(0, -40, -3, 70.4, 40, 1),
+        norm_cfg=dict(type="BN1d", eps=1e-3, momentum=0.01),
+        mode="max",
+        short_cut=False,
+        fusion_layer=None,
+        return_point_feats=False,
+    ):
         super(DynamicFusionVFE, self).__init__()
-        assert mode in ['avg', 'max']
+        assert mode in ["avg", "max"]
         assert len(feat_channels) > 0
         if with_cluster_center:
             in_channels += 3
@@ -89,18 +92,22 @@ class DynamicFusionVFE(nn.Module):
             norm_name, norm_layer = build_norm_layer(norm_cfg, out_filters)
             vfe_layers.append(
                 nn.Sequential(
-                    nn.Linear(in_filters, out_filters, bias=False), norm_layer,
-                    nn.ReLU(inplace=True)))
+                    nn.Linear(in_filters, out_filters, bias=False),
+                    norm_layer,
+                    nn.ReLU(inplace=True),
+                )
+            )
         self.vfe_layers = nn.ModuleList(vfe_layers)
         self.num_vfe = len(vfe_layers)
-        self.vfe_scatter = DynamicScatter(voxel_size, point_cloud_range,
-                                          (mode != 'max'))
+        self.vfe_scatter = DynamicScatter(
+            voxel_size, point_cloud_range, (mode != "max")
+        )
         self.cluster_scatter = DynamicScatter(
-            voxel_size, point_cloud_range, average_points=True)
+            voxel_size, point_cloud_range, average_points=True
+        )
         self.fusion_layer = None
         if fusion_layer is not None:
             self.fusion_layer = builder.build_fusion_layer(fusion_layer)
-
 
     def map_voxel_center_to_point(self, pts_coors, voxel_mean, voxel_coors):
         """Map voxel features to its corresponding points.
@@ -116,11 +123,14 @@ class DynamicFusionVFE(nn.Module):
         # Step 1: scatter voxel into canvas
         # Calculate necessary things for canvas creation
         canvas_z = int(
-            (self.point_cloud_range[5] - self.point_cloud_range[2]) / self.vz)
+            (self.point_cloud_range[5] - self.point_cloud_range[2]) / self.vz
+        )
         canvas_y = int(
-            (self.point_cloud_range[4] - self.point_cloud_range[1]) / self.vy)
+            (self.point_cloud_range[4] - self.point_cloud_range[1]) / self.vy
+        )
         canvas_x = int(
-            (self.point_cloud_range[3] - self.point_cloud_range[0]) / self.vx)
+            (self.point_cloud_range[3] - self.point_cloud_range[0]) / self.vx
+        )
         # canvas_channel = voxel_mean.size(1)
         batch_size = pts_coors[-1, 0] + 1
         canvas_len = canvas_z * canvas_y * canvas_x * batch_size
@@ -128,29 +138,29 @@ class DynamicFusionVFE(nn.Module):
         canvas = voxel_mean.new_zeros(canvas_len, dtype=torch.long)
         # Only include non-empty pillars
         indices = (
-            voxel_coors[:, 0] * canvas_z * canvas_y * canvas_x +
-            voxel_coors[:, 1] * canvas_y * canvas_x +
-            voxel_coors[:, 2] * canvas_x + voxel_coors[:, 3])
+            voxel_coors[:, 0] * canvas_z * canvas_y * canvas_x
+            + voxel_coors[:, 1] * canvas_y * canvas_x
+            + voxel_coors[:, 2] * canvas_x
+            + voxel_coors[:, 3]
+        )
         # Scatter the blob back to the canvas
         canvas[indices.long()] = torch.arange(
-            start=0, end=voxel_mean.size(0), device=voxel_mean.device)
+            start=0, end=voxel_mean.size(0), device=voxel_mean.device
+        )
 
         # Step 2: get voxel mean for each point
         voxel_index = (
-            pts_coors[:, 0] * canvas_z * canvas_y * canvas_x +
-            pts_coors[:, 1] * canvas_y * canvas_x +
-            pts_coors[:, 2] * canvas_x + pts_coors[:, 3])
+            pts_coors[:, 0] * canvas_z * canvas_y * canvas_x
+            + pts_coors[:, 1] * canvas_y * canvas_x
+            + pts_coors[:, 2] * canvas_x
+            + pts_coors[:, 3]
+        )
         voxel_inds = canvas[voxel_index.long()]
         center_per_point = voxel_mean[voxel_inds, ...]
         return center_per_point
 
     @force_fp32(out_fp16=True)
-    def forward(self,
-                features,
-                coors,
-                points=None,
-                img_feats=None,
-                img_metas=None):
+    def forward(self, features, coors, points=None, img_feats=None, img_metas=None):
         """Forward functions.
 
         Args:
@@ -171,8 +181,7 @@ class DynamicFusionVFE(nn.Module):
         # Find distance of x, y, and z from cluster center
         if self._with_cluster_center:
             voxel_mean, mean_coors = self.cluster_scatter(features, coors)
-            points_mean = self.map_voxel_center_to_point(
-                coors, voxel_mean, mean_coors)
+            points_mean = self.map_voxel_center_to_point(coors, voxel_mean, mean_coors)
             # TODO: maybe also do cluster for reflectivity
             f_cluster = features[:, :3] - points_mean[:, :3]
             features_ls.append(f_cluster)
@@ -181,11 +190,14 @@ class DynamicFusionVFE(nn.Module):
         if self._with_voxel_center:
             f_center = features.new_zeros(size=(features.size(0), 3))
             f_center[:, 0] = features[:, 0] - (
-                coors[:, 3].type_as(features) * self.vx + self.x_offset)
+                coors[:, 3].type_as(features) * self.vx + self.x_offset
+            )
             f_center[:, 1] = features[:, 1] - (
-                coors[:, 2].type_as(features) * self.vy + self.y_offset)
+                coors[:, 2].type_as(features) * self.vy + self.y_offset
+            )
             f_center[:, 2] = features[:, 2] - (
-                coors[:, 1].type_as(features) * self.vz + self.z_offset)
+                coors[:, 1].type_as(features) * self.vz + self.z_offset
+            )
             features_ls.append(f_center)
 
         if self._with_distance:
@@ -197,17 +209,25 @@ class DynamicFusionVFE(nn.Module):
         for i, vfe in enumerate(self.vfe_layers):
             point_feats = vfe(features)
             voxel_feats, voxel_coors = self.vfe_scatter(point_feats, coors)
-            if (i == len(self.vfe_layers) - 1 and self.fusion_layer is not None
-                    and img_feats is not None):
-                voxel_feats = self.fusion_layer(img_feats, voxel_coors, voxel_feats, \
-                         img_metas=img_metas, voxel_size=self.voxel_size, \
-                         point_cloud_range=self.point_cloud_range)
+            if (
+                i == len(self.vfe_layers) - 1
+                and self.fusion_layer is not None
+                and img_feats is not None
+            ):
+                voxel_feats = self.fusion_layer(
+                    img_feats,
+                    voxel_coors,
+                    voxel_feats,
+                    img_metas=img_metas,
+                    voxel_size=self.voxel_size,
+                    point_cloud_range=self.point_cloud_range,
+                )
                 continue
             feat_per_point = self.map_voxel_center_to_point(
-                    coors, voxel_feats, voxel_coors)
+                coors, voxel_feats, voxel_coors
+            )
             features = torch.cat([point_feats, feat_per_point], dim=1)
         pt_features = features if self.short_cut else feat_per_point
         if self.return_point_feats:
             return pt_features
         return voxel_feats, voxel_coors
-

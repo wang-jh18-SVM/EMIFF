@@ -14,23 +14,21 @@ import numpy as np
 
 
 def attention(query, key, mask=None, dropout=None):
-
     # from IPython import embed
     # embed()
 
     "Compute 'Scaled Dot Product Attention'"
     d_k = query.size(-1)
-    scores = torch.matmul(query, key.transpose(-2, -1)) \
-            / math.sqrt(d_k)
+    scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
     if mask is not None:
         scores = scores.masked_fill(mask == 0, -1e9)
-    p_attn = F.softmax(scores, dim = -1)
+    p_attn = F.softmax(scores, dim=-1)
     if dropout is not None:
         p_attn = dropout(p_attn)
     return p_attn
 
-class double_conv(nn.Module):
 
+class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(double_conv, self).__init__()
 
@@ -40,12 +38,13 @@ class double_conv(nn.Module):
             nn.ReLU(),
             nn.Conv2d(out_ch, out_ch, 3, stride=1, padding=1),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU()
+            nn.ReLU(),
         )
 
     def forward(self, x):
         x = self.conv(x)
         return x
+
 
 # class Weights_MLP(nn.Module):
 
@@ -66,32 +65,30 @@ class double_conv(nn.Module):
 
 
 class DCN_Up_Conv_List(nn.Module):
-
     def __init__(self, neck_dcn, channels):
         super(DCN_Up_Conv_List, self).__init__()
 
-
         self.upconv0 = nn.Sequential(
-            double_conv(channels,channels),
+            double_conv(channels, channels),
         )
 
         self.upconv1 = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-            double_conv(channels,channels),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            double_conv(channels, channels),
         )
         self.upconv2 = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-            double_conv(channels,channels),
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-            double_conv(channels,channels),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            double_conv(channels, channels),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            double_conv(channels, channels),
         )
         self.upconv3 = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-            double_conv(channels,channels),
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-            double_conv(channels,channels),
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-            double_conv(channels,channels),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            double_conv(channels, channels),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            double_conv(channels, channels),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            double_conv(channels, channels),
         )
 
         self.dcn0 = build_neck(neck_dcn)
@@ -113,17 +110,18 @@ class DCN_Up_Conv_List(nn.Module):
         x3 = self.dcn3(x[3])
         x3 = self.upconv3(x3)
 
-
-        return [x0,x1,x2,x3]
+        return [x0, x1, x2, x3]
 
 
 class Mlp(nn.Module):
-    def __init__(self,
-                 in_features,
-                 hidden_features=None,
-                 out_features=None,
-                 act_layer=nn.ReLU,
-                 drop=0.0):
+    def __init__(
+        self,
+        in_features,
+        hidden_features=None,
+        out_features=None,
+        act_layer=nn.ReLU,
+        drop=0.0,
+    ):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -141,54 +139,57 @@ class Mlp(nn.Module):
         x = self.drop2(x)
         return x
 
+
 class SELayer(nn.Module):
     def __init__(self, channels, act_layer=nn.ReLU, gate_layer=nn.Sigmoid):
-        super(SELayer,self).__init__()
+        super(SELayer, self).__init__()
         self.conv_reduce = nn.Conv2d(channels, channels, 1, bias=True)
         self.act1 = act_layer()
         self.conv_expand = nn.Conv2d(channels, channels, 1, bias=True)
         self.gate = gate_layer()
 
     def forward(self, x, x_se):
-
-        # from IPython import embed 
+        # from IPython import embed
         # embed(header='SELayer')
         x_se = self.conv_reduce(x_se)
         x_se = self.act1(x_se)
         x_se = self.conv_expand(x_se)
         return x * self.gate(x_se)
 
+
 class SE_Inception_Layer(nn.Module):
-    def __init__(self, channels, reduction_ratio=1, act_layer=nn.ReLU, gate_layer=nn.Sigmoid):
-        super(SE_Inception_Layer,self).__init__()
-        self.conv_reduce = nn.Linear(channels, channels//reduction_ratio)
+    def __init__(
+        self, channels, reduction_ratio=1, act_layer=nn.ReLU, gate_layer=nn.Sigmoid
+    ):
+        super(SE_Inception_Layer, self).__init__()
+        self.conv_reduce = nn.Linear(channels, channels // reduction_ratio)
         self.act1 = act_layer()
-        self.conv_expand = nn.Linear(channels//reduction_ratio, channels)
+        self.conv_expand = nn.Linear(channels // reduction_ratio, channels)
         self.gate = gate_layer()
 
     def forward(self, x, x_se):
-
-        # from IPython import embed 
+        # from IPython import embed
         # embed(header='SE_Inception_Layer')
         x_se = self.conv_reduce(x_se)
         x_se = self.act1(x_se)
         x_se = self.conv_expand(x_se)
-        return x * self.gate(x_se)[...,None,None]
+        return x * self.gate(x_se)[..., None, None]
 
 
 class CASELayer(nn.Module):
-    def __init__(self, channels, reduction_ratio=1, act_layer=nn.ReLU, gate_layer=nn.Sigmoid):
-        super(CASELayer,self).__init__()
-        self.FC_reduce = nn.Linear(channels, channels//reduction_ratio)
+    def __init__(
+        self, channels, reduction_ratio=1, act_layer=nn.ReLU, gate_layer=nn.Sigmoid
+    ):
+        super(CASELayer, self).__init__()
+        self.FC_reduce = nn.Linear(channels, channels // reduction_ratio)
         self.act1 = act_layer()
-        self.FC_expand = nn.Linear(channels//reduction_ratio, channels)
-        self.FC_out = nn.Linear(channels*2, channels)
+        self.FC_expand = nn.Linear(channels // reduction_ratio, channels)
+        self.FC_out = nn.Linear(channels * 2, channels)
         self.gate = gate_layer()
-        self.max_pooling = nn.AdaptiveMaxPool2d((1,1))
+        self.max_pooling = nn.AdaptiveMaxPool2d((1, 1))
 
     def forward(self, x, x_se):
-
-        # from IPython import embed 
+        # from IPython import embed
         # embed(header='CASELayer')
 
         # x_channel = torch.max(x,1)[0].unsqueeze(1), torch.mean(x,1).unsqueeze(1)), dim=1 )
@@ -196,39 +197,37 @@ class CASELayer(nn.Module):
         x_se = self.FC_reduce(x_se)
         x_se = self.act1(x_se)
         x_se = self.FC_expand(x_se)
-        x_se = torch.cat((x_channel[...,0,0], x_se), dim=1)
+        x_se = torch.cat((x_channel[..., 0, 0], x_se), dim=1)
         x_se = self.FC_out(x_se)
 
-        return x * self.gate(x_se)[...,None,None]
+        return x * self.gate(x_se)[..., None, None]
+
 
 class CCMNet(nn.Module):
     def __init__(self, in_channels, mid_channels, context_channels, reduction_ratio=1):
         super(CCMNet, self).__init__()
         self.reduce_conv = nn.Sequential(
-            nn.Conv2d(in_channels,
-                      mid_channels,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1),
+            nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(mid_channels),
             nn.ReLU(inplace=True),
         )
-        self.context_conv = nn.Conv2d(mid_channels,
-                                      context_channels,
-                                      kernel_size=1,
-                                      stride=1,
-                                      padding=0)
+        self.context_conv = nn.Conv2d(
+            mid_channels, context_channels, kernel_size=1, stride=1, padding=0
+        )
         self.bn = nn.BatchNorm1d(16)
         self.context_mlp = Mlp(16, mid_channels, mid_channels)
-        self.context_se = SE_Inception_Layer(mid_channels,reduction_ratio=reduction_ratio)  # NOTE: add camera-aware
+        self.context_se = SE_Inception_Layer(
+            mid_channels, reduction_ratio=reduction_ratio
+        )  # NOTE: add camera-aware
 
         # self.context_se = CASELayer(mid_channels,reduction_ratio=8)  # NOTE: add camera-aware
-    
-    def ida_mat_cal(self,img_meta):
-        img_scale_factor = (img_meta['scale_factor'][:2]
-                if 'scale_factor' in img_meta.keys() else 1)
 
-        img_shape = img_meta['img_shape'][:2]
+    def ida_mat_cal(self, img_meta):
+        img_scale_factor = (
+            img_meta["scale_factor"][:2] if "scale_factor" in img_meta.keys() else 1
+        )
+
+        img_shape = img_meta["img_shape"][:2]
         orig_h, orig_w = img_shape
 
         ida_rot = torch.eye(2)
@@ -236,7 +235,7 @@ class CCMNet(nn.Module):
 
         ida_rot *= img_scale_factor
         # ida_tran -= torch.Tensor(crop[:2])
-        if 'flip' in img_meta.keys() and img_meta['flip']:
+        if "flip" in img_meta.keys() and img_meta["flip"]:
             A = torch.Tensor([[-1, 0], [0, 1]])
             b = torch.Tensor([orig_w, 0])
             ida_rot = A.matmul(ida_rot)
@@ -255,19 +254,17 @@ class CCMNet(nn.Module):
         bs, C, H, W = x_v.shape
         num_cams = 2
 
-        x = torch.stack((x_v,x_i),dim=1).reshape(-1, C, H, W)
-
+        x = torch.stack((x_v, x_i), dim=1).reshape(-1, C, H, W)
 
         extrinsic_v_list = list()
         extrinsic_i_list = list()
         intrinsic_v_list = list()
         intrinsic_i_list = list()
         for img_meta in img_metas:
-
-            extrinsic_v = torch.Tensor(img_meta['lidar2img']['extrinsic'][0])
-            extrinsic_i = torch.Tensor(img_meta['lidar2img']['extrinsic'][1])
-            intrinsic_v = torch.Tensor(img_meta['lidar2img']['intrinsic'][0])
-            intrinsic_i = torch.Tensor(img_meta['lidar2img']['intrinsic'][1])
+            extrinsic_v = torch.Tensor(img_meta["lidar2img"]["extrinsic"][0])
+            extrinsic_i = torch.Tensor(img_meta["lidar2img"]["extrinsic"][1])
+            intrinsic_v = torch.Tensor(img_meta["lidar2img"]["intrinsic"][0])
+            intrinsic_i = torch.Tensor(img_meta["lidar2img"]["intrinsic"][1])
             # from IPython import embed
             # embed(header='ida')
             ida_mat = self.ida_mat_cal(img_meta)
@@ -280,31 +277,29 @@ class CCMNet(nn.Module):
             intrinsic_v_list.append(intrinsic_v)
             intrinsic_i_list.append(intrinsic_i)
 
-            
-
         extrinsic_v = torch.stack(extrinsic_v_list)
         extrinsic_i = torch.stack(extrinsic_i_list)
         intrinsic_v = torch.stack(intrinsic_v_list)
         intrinsic_i = torch.stack(intrinsic_i_list)
 
-        extrinsic = torch.stack((extrinsic_v,extrinsic_i),dim=1) 
-        intrinsic = torch.stack((intrinsic_v,intrinsic_i),dim=1) 
+        extrinsic = torch.stack((extrinsic_v, extrinsic_i), dim=1)
+        intrinsic = torch.stack((intrinsic_v, intrinsic_i), dim=1)
 
         in_mlp = torch.stack(
-                    (
-                        intrinsic[..., 0, 0],
-                        intrinsic[..., 1, 1],
-                        intrinsic[..., 0, 2],
-                        intrinsic[ ..., 1, 2],
-                    ),
-                    dim=-1
-                )
+            (
+                intrinsic[..., 0, 0],
+                intrinsic[..., 1, 1],
+                intrinsic[..., 0, 2],
+                intrinsic[..., 1, 2],
+            ),
+            dim=-1,
+        )
 
         # from IPython import embed
         # embed(header='DCMNet')
-        ex_mlp = extrinsic[...,:3,:].view(bs,num_cams,-1)
-        mlp_input = torch.cat((in_mlp,ex_mlp),dim=-1)
-        mlp_input = mlp_input.reshape(-1,mlp_input.shape[-1]).to(x.device)
+        ex_mlp = extrinsic[..., :3, :].view(bs, num_cams, -1)
+        mlp_input = torch.cat((in_mlp, ex_mlp), dim=-1)
+        mlp_input = mlp_input.reshape(-1, mlp_input.shape[-1]).to(x.device)
 
         mlp_input = self.bn(mlp_input)
         x = self.reduce_conv(x)
@@ -313,39 +308,40 @@ class CCMNet(nn.Module):
         context = self.context_se(x, context_se)
         context = self.context_conv(context)
 
-        context = context.reshape(bs,num_cams,C,H,W)
-        x_v_out = context[:,0,...]
-        x_i_out = context[:,1,...]
+        context = context.reshape(bs, num_cams, C, H, W)
+        x_v_out = context[:, 0, ...]
+        x_i_out = context[:, 1, ...]
 
         # from IPython import embed
         # embed(header='DCMNet end')
         return tuple((x_v_out, x_i_out))
 
 
-
 @DETECTORS.register_module()
 class VICFuser_Voxel_CCM(BaseDetector):
     r"""`ImVoxelNet <https://arxiv.org/abs/2106.01178>`_."""
 
-    def __init__(self,
-                 backbone,
-                 neck,
-                 neck_3d,
-                 bbox_head,
-                 n_voxels,
-                 anchor_generator,
-                 train_cfg=None,
-                 test_cfg=None,
-                 pretrained=None,
-                 init_cfg=None,
-                 neck_dcn=None):
-        print('VICFuser_Voxel_CCM_0120.__init__')
+    def __init__(
+        self,
+        backbone,
+        neck,
+        neck_3d,
+        bbox_head,
+        n_voxels,
+        anchor_generator,
+        train_cfg=None,
+        test_cfg=None,
+        pretrained=None,
+        init_cfg=None,
+        neck_dcn=None,
+    ):
+        print("VICFuser_Voxel_CCM_0120.__init__")
         super().__init__(init_cfg=init_cfg)
         self.backbone_v = build_backbone(backbone)
         self.neck_v = build_neck(neck)
         self.backbone_i = build_backbone(backbone)
         self.neck_i = build_neck(neck)
-        
+
         self.neck_3d = build_neck(neck_3d)
 
         bbox_head.update(train_cfg=train_cfg)
@@ -363,22 +359,21 @@ class VICFuser_Voxel_CCM(BaseDetector):
 
         # self.confnet_v = double_conv(self.img_feat_channels+1, 1)
         # self.confnet_i = double_conv(self.img_feat_channels+1, 1)
-        self.ccmnet =  CCMNet(self.img_feat_channels,self.img_feat_channels*4,self.img_feat_channels)
-
+        self.ccmnet = CCMNet(
+            self.img_feat_channels, self.img_feat_channels * 4, self.img_feat_channels
+        )
 
     # def extract_img_feat(self, img, img_metas):
     #     """Extract features from images."""
     #     bs = img.shape[0]
     #     img_v = img[:,0,...]
     #     img_i = img[:,1,...]
-        
-        
+
     #     x_v = self.backbone_v(img_v)
     #     x_v = self.neck_v(x_v)
-        
+
     #     x_i = self.backbone_i(img_i)
     #     x_i = self.neck_i(x_i)
-        
 
     #     x_v = self.dcn_up_conv_v(list(x_v))
     #     x_i = self.dcn_up_conv_i(list(x_i))
@@ -390,34 +385,34 @@ class VICFuser_Voxel_CCM(BaseDetector):
     #     # Mean 1
     #     x_v_out_mean1 = torch.mean(x_v_tensor,dim=1)
     #     x_i_out_mean1 = torch.mean(x_i_tensor,dim=1)
-        
+
     #     return tuple((x_v_out_mean1, x_i_out_mean1))
 
     def extract_img_feat(self, img, img_metas):
         """Extract features from images."""
         bs = img.shape[0]
-        img_v = img[:,0,...]
-        img_i = img[:,1,...]
-        
+        img_v = img[:, 0, ...]
+        img_i = img[:, 1, ...]
+
         # from IPython import embed
         # embed(header='test')
         x_v = self.backbone_v(img_v)
         x_v = self.neck_v(x_v)
         x_v = self.dcn_up_conv_v(list(x_v))
-        x_v_tensor = torch.stack(x_v).permute(1,0,2,3,4)
-        x_v_out = torch.mean(x_v_tensor,dim=1)
+        x_v_tensor = torch.stack(x_v).permute(1, 0, 2, 3, 4)
+        x_v_out = torch.mean(x_v_tensor, dim=1)
 
         x_i = self.backbone_i(img_i)
         x_i = self.neck_i(x_i)
         x_i = self.dcn_up_conv_i(list(x_i))
-        x_i_tensor = torch.stack(x_i).permute(1,0,2,3,4)
+        x_i_tensor = torch.stack(x_i).permute(1, 0, 2, 3, 4)
 
         # query.shape[B,C]
         # key.shape[B,N_levels,C]
-        query = torch.mean(x_v_out,dim=(-2,-1))[:,None,:]
-        key = torch.mean(x_i_tensor,dim=(-2,-1))
-        weights_i = attention(query,key).squeeze(1)
-        x_i_out = (weights_i[:,:,None,None,None] * x_i_tensor).sum(dim=1)
+        query = torch.mean(x_v_out, dim=(-2, -1))[:, None, :]
+        key = torch.mean(x_i_tensor, dim=(-2, -1))
+        weights_i = attention(query, key).squeeze(1)
+        x_i_out = (weights_i[:, :, None, None, None] * x_i_tensor).sum(dim=1)
 
         return tuple((x_v_out, x_i_out))
 
@@ -433,14 +428,15 @@ class VICFuser_Voxel_CCM(BaseDetector):
         """
         # from IPython import embed
         # embed(header='distance')
-        
+
         batch_size = img.shape[0]
         x_v, x_i = self.extract_img_feat(img, img_metas)
 
         x_v, x_i = self.ccmnet(x_v, x_i, img_metas)
 
         points = self.anchor_generator.grid_anchors(
-            [self.n_voxels[::-1]], device=img.device)[0][:, :3]
+            [self.n_voxels[::-1]], device=img.device
+        )[0][:, :3]
 
         # DCM
         # dis_veh = list()
@@ -460,7 +456,7 @@ class VICFuser_Voxel_CCM(BaseDetector):
 
         #     dis_veh.append(d_veh.reshape(self.n_voxels[::-1]))
         #     dis_inf.append(d_inf.reshape(self.n_voxels[::-1]))
-        
+
         # distance_veh = torch.stack(dis_veh)
         # distance_inf = torch.stack(dis_inf)
 
@@ -472,66 +468,77 @@ class VICFuser_Voxel_CCM(BaseDetector):
 
         volumes_v = []
         for feature, img_meta in zip(x_v, img_metas):
-
-            proj_mat_ex0 = points.new_tensor(img_meta['lidar2img']['extrinsic'][0])
-            proj_mat_in0 = points.new_tensor(img_meta['lidar2img']['intrinsic'][0])
+            proj_mat_ex0 = points.new_tensor(img_meta["lidar2img"]["extrinsic"][0])
+            proj_mat_in0 = points.new_tensor(img_meta["lidar2img"]["intrinsic"][0])
             proj_mats0 = proj_mat_in0 @ proj_mat_ex0
 
             img_scale_factor = (
-                points.new_tensor(img_meta['scale_factor'][:2])
-                if 'scale_factor' in img_meta.keys() else 1)
-            img_flip = img_meta['flip'] if 'flip' in img_meta.keys() else False
+                points.new_tensor(img_meta["scale_factor"][:2])
+                if "scale_factor" in img_meta.keys()
+                else 1
+            )
+            img_flip = img_meta["flip"] if "flip" in img_meta.keys() else False
             img_crop_offset = (
-                points.new_tensor(img_meta['img_crop_offset'])
-                if 'img_crop_offset' in img_meta.keys() else 0)
+                points.new_tensor(img_meta["img_crop_offset"])
+                if "img_crop_offset" in img_meta.keys()
+                else 0
+            )
             volume_v = point_sample(
                 img_meta,
                 img_features=feature[None, ...],
                 points=points,
                 proj_mat=proj_mats0,
-                coord_type='LIDAR',
+                coord_type="LIDAR",
                 img_scale_factor=img_scale_factor,
                 img_crop_offset=img_crop_offset,
                 img_flip=img_flip,
                 img_pad_shape=img.shape[-2:],
-                img_shape=img_meta['img_shape'][:2],
-                aligned=False)          
+                img_shape=img_meta["img_shape"][:2],
+                aligned=False,
+            )
             volumes_v.append(
-                volume_v.reshape(self.n_voxels[::-1] + [-1]).permute(3, 2, 1, 0))
+                volume_v.reshape(self.n_voxels[::-1] + [-1]).permute(3, 2, 1, 0)
+            )
         x_v = torch.stack(volumes_v)
 
         volumes_i = []
         for feature, img_meta in zip(x_i, img_metas):
-            proj_mat_ex1 = points.new_tensor(img_meta['lidar2img']['extrinsic'][1])
-            proj_mat_in1 = points.new_tensor(img_meta['lidar2img']['intrinsic'][1])
+            proj_mat_ex1 = points.new_tensor(img_meta["lidar2img"]["extrinsic"][1])
+            proj_mat_in1 = points.new_tensor(img_meta["lidar2img"]["intrinsic"][1])
             proj_mats1 = proj_mat_in1 @ proj_mat_ex1
 
             img_scale_factor = (
-                points.new_tensor(img_meta['scale_factor'][:2])
-                if 'scale_factor' in img_meta.keys() else 1)
-            img_flip = img_meta['flip'] if 'flip' in img_meta.keys() else False
+                points.new_tensor(img_meta["scale_factor"][:2])
+                if "scale_factor" in img_meta.keys()
+                else 1
+            )
+            img_flip = img_meta["flip"] if "flip" in img_meta.keys() else False
             img_crop_offset = (
-                points.new_tensor(img_meta['img_crop_offset'])
-                if 'img_crop_offset' in img_meta.keys() else 0)
+                points.new_tensor(img_meta["img_crop_offset"])
+                if "img_crop_offset" in img_meta.keys()
+                else 0
+            )
             volume_i = point_sample(
                 img_meta,
                 img_features=feature[None, ...],
                 points=points,
                 proj_mat=proj_mats1,
-                coord_type='LIDAR',
+                coord_type="LIDAR",
                 img_scale_factor=img_scale_factor,
                 img_crop_offset=img_crop_offset,
                 img_flip=img_flip,
                 img_pad_shape=img.shape[-2:],
-                img_shape=img_meta['img_shape'][:2],
-                aligned=False)         
+                img_shape=img_meta["img_shape"][:2],
+                aligned=False,
+            )
             volumes_i.append(
-                volume_i.reshape(self.n_voxels[::-1] + [-1]).permute(3, 2, 1, 0))
-            
+                volume_i.reshape(self.n_voxels[::-1] + [-1]).permute(3, 2, 1, 0)
+            )
+
         x_i = torch.stack(volumes_i)
 
-        assert x_v.shape[0] == batch_size, 'x_v shape[0] is not equal bs'
-        assert x_i.shape[0] == batch_size, 'x_i shape[0] is not equal bs'
+        assert x_v.shape[0] == batch_size, "x_v shape[0] is not equal bs"
+        assert x_i.shape[0] == batch_size, "x_i shape[0] is not equal bs"
         assert x_v.shape == x_i.shape
 
         # x_v_bev = torch.mean(x_v,dim=4)
@@ -549,18 +556,16 @@ class VICFuser_Voxel_CCM(BaseDetector):
         # x_v = x_v * confidences_veh.unsqueeze(-1)
         # x_i = x_i * confidences_inf.unsqueeze(-1)
 
-        x_stack = torch.stack((x_v,x_i),dim=0)
-        x = torch.mean(x_stack,dim=0)
-        
-        # x [bs,C, X, Y, Z] [2,64,248,288,12]
-        x = self.neck_3d(x)   
-        # x[0] [bs,C, Y, X] [2,256,288,248]
+        x_stack = torch.stack((x_v, x_i), dim=0)
+        x = torch.mean(x_stack, dim=0)
 
+        # x [bs,C, X, Y, Z] [2,64,248,288,12]
+        x = self.neck_3d(x)
+        # x[0] [bs,C, Y, X] [2,256,288,248]
 
         return x
 
-    def forward_train(self, img, img_metas, gt_bboxes_3d, gt_labels_3d,
-                      **kwargs):
+    def forward_train(self, img, img_metas, gt_bboxes_3d, gt_labels_3d, **kwargs):
         """Forward of training.
 
         Args:
@@ -574,7 +579,7 @@ class VICFuser_Voxel_CCM(BaseDetector):
         """
         # from IPython import embed
         # embed(header='VICFuser_Voxel_Distance.forward_train')
-        
+
         x = self.extract_feat(img, img_metas)
         x = self.bbox_head(x)
         losses = self.bbox_head.loss(*x, gt_bboxes_3d, gt_labels_3d, img_metas)
@@ -590,10 +595,10 @@ class VICFuser_Voxel_CCM(BaseDetector):
         Returns:
             list[dict]: Predicted 3d boxes.
         """
-        
+
         # from IPython import embed
         # embed(header='VICFuser_BEV.forward_test')
-        
+
         # not supporting aug_test for now
         return self.simple_test(img, img_metas)
 
@@ -607,7 +612,7 @@ class VICFuser_Voxel_CCM(BaseDetector):
         Returns:
             list[dict]: Predicted 3d boxes.
         """
-        
+
         # from IPython import embed
         # embed(header='VICFuser_BEV.simple_test')
         x = self.extract_feat(img, img_metas)

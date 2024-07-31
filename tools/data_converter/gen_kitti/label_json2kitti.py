@@ -16,8 +16,16 @@ def write_kitti_in_txt(my_json, path_txt):
             str(item["2d_box"]["ymax"]),
         )
         # i9, i10, i11 = str(item["3d_dimensions"]["h"]), str(item["3d_dimensions"]["w"]), str(item["3d_dimensions"]["l"])
-        i9, i11, i10 = str(item["3d_dimensions"]["h"]), str(item["3d_dimensions"]["w"]), str(item["3d_dimensions"]["l"])
-        i12, i13, i14 = str(item["3d_location"]["x"]), str(item["3d_location"]["y"]), str(item["3d_location"]["z"])
+        i9, i11, i10 = (
+            str(item["3d_dimensions"]["h"]),
+            str(item["3d_dimensions"]["w"]),
+            str(item["3d_dimensions"]["l"]),
+        )
+        i12, i13, i14 = (
+            str(item["3d_location"]["x"]),
+            str(item["3d_location"]["y"]),
+            str(item["3d_location"]["z"]),
+        )
         # i15 = str(item["rotation"])
         i15 = str(-item["rotation"])
         # i15 = str(-eval(item["rotation"]))
@@ -30,7 +38,6 @@ def write_kitti_in_txt(my_json, path_txt):
 def json2kitti(json_root, kitti_label_root):
     mkdir_p(kitti_label_root)
     jsons_path = get_files_path(json_root, ".json")
-    
 
     for json_path in jsons_path:
         my_json = read_json(json_path)

@@ -19,25 +19,29 @@ class DGCNNFAModule(BaseModule):
         init_cfg (dict, optional): Initialization config. Defaults to None.
     """
 
-    def __init__(self,
-                 mlp_channels,
-                 norm_cfg=dict(type='BN1d'),
-                 act_cfg=dict(type='ReLU'),
-                 init_cfg=None):
+    def __init__(
+        self,
+        mlp_channels,
+        norm_cfg=dict(type="BN1d"),
+        act_cfg=dict(type="ReLU"),
+        init_cfg=None,
+    ):
         super().__init__(init_cfg=init_cfg)
         self.fp16_enabled = False
         self.mlps = nn.Sequential()
         for i in range(len(mlp_channels) - 1):
             self.mlps.add_module(
-                f'layer{i}',
+                f"layer{i}",
                 ConvModule(
                     mlp_channels[i],
                     mlp_channels[i + 1],
-                    kernel_size=(1, ),
-                    stride=(1, ),
-                    conv_cfg=dict(type='Conv1d'),
+                    kernel_size=(1,),
+                    stride=(1,),
+                    conv_cfg=dict(type="Conv1d"),
                     norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    act_cfg=act_cfg,
+                ),
+            )
 
     @force_fp32()
     def forward(self, points):

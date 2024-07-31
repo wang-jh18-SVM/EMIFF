@@ -174,7 +174,9 @@ def build_label_list(annos, filt):
     result_list = []
     for i in range(len(annos["labels_3d"])):
         if superclass[annos["labels_3d"][i]] == filt:
-            result_list.append({"box": annos["boxes_3d"][i], "score": annos["scores_3d"][i]})
+            result_list.append(
+                {"box": annos["boxes_3d"][i], "score": annos["scores_3d"][i]}
+            )
     return result_list
 
 
@@ -189,10 +191,10 @@ def compute_type(gt_annos, pred_annos, cla, iou_threshold, view):
         result_pred_annos:    List, [{'box': Array[8, 3], 'score': Float, 'type': 'tp'/'fp'}]
         num_gt:               Int, number of ground truths
     """
-    
+
     # from IPython import embed
     # embed(header='compute_type')
-    
+
     gt_annos = build_label_list(gt_annos, filt=cla)
     pred_annos = build_label_list(pred_annos, filt=cla)
     pred_annos = sorted(pred_annos, key=cmp_to_key(cmp))
@@ -204,17 +206,24 @@ def compute_type(gt_annos, pred_annos, cla, iou_threshold, view):
     for k in range(len(gt_annos)):
         gt_anno = gt_annos[k]
         # logger.debug("ground truth center: {}".format(np.mean(gt_anno["box"], axis=0)))
-        
+
         mx = iou_threshold
         mx_pred = None
         iou_max = 0
         for i in range(len(pred_annos)):
             pred_anno = pred_annos[i]
             try:
-                iou, iou_2d = box3d_iou(gt_anno["box"][perm_label], pred_anno["box"][perm_pred])    
+                iou, iou_2d = box3d_iou(
+                    gt_anno["box"][perm_label], pred_anno["box"][perm_pred]
+                )
             except Exception:
                 iou, iou_2d = 0, 0
-                print("gt=", gt_anno['box'][perm_label], "pred=", pred_anno['box'][perm_pred])
+                print(
+                    "gt=",
+                    gt_anno["box"][perm_label],
+                    "pred=",
+                    pred_anno["box"][perm_pred],
+                )
             if view == "bev":
                 iou = iou_2d
             """
@@ -225,13 +234,12 @@ def compute_type(gt_annos, pred_annos, cla, iou_threshold, view):
                     iou, _ = box3d_iou(gt_anno['box'][perm_label], pred_anno['box'][perm_pred], debug=True)
             """
             if iou >= mx:
-                
                 mx = iou
                 mx_pred = i
-                
+
             if iou > iou_max:
                 iou_max = iou
-                
+
         # print('gt_annos_idx',k,'iou_max:',iou_max)
         if mx_pred is not None:
             result_pred_annos.append(pred_annos[mx_pred])
@@ -283,26 +291,33 @@ class Evaluator(object):
                 self.gt_num[pred_class][iou] = 0
 
     def add_frame(self, pred, label):
-        
         # from IPython import embed
         # embed(header='1')
         for pred_class in self.pred_classes:
             for iou in iou_threshold_dict[pred_class]:
-                
                 # from IPython import embed
                 # embed(header='2')
-                pred_result, num_label, num_tp = compute_type(label, pred, pred_class, iou, "3d")  # test
+                pred_result, num_label, num_tp = compute_type(
+                    label, pred, pred_class, iou, "3d"
+                )  # test
                 self.all_preds["3d"][pred_class][iou] += pred_result
-                self.all_preds["bev"][pred_class][iou] += compute_type(label, pred, pred_class, iou, "bev")[0]
+                self.all_preds["bev"][pred_class][iou] += compute_type(
+                    label, pred, pred_class, iou, "bev"
+                )[0]
                 self.gt_num[pred_class][iou] += num_label
                 # logger.debug("iou: {}, tp: {}, all_pred: {}".format(iou, num_tp, len(pred["labels_3d"])))
 
-    def print_ap(self, view, type="micro"):      
+    def print_ap(self, view, type="micro"):
         ap_result = {view: {}}
         for pred_class in self.pred_classes:
             ap_result[view][pred_class] = {}
             for iou in iou_threshold_dict[pred_class]:
-                ap = compute_ap(self.all_preds[view][pred_class][iou], self.gt_num[pred_class][iou])
-                print("%s %s IoU threshold %.2lf, Average Precision = %.2lf" % (pred_class, view, iou, ap * 100))
+                ap = compute_ap(
+                    self.all_preds[view][pred_class][iou], self.gt_num[pred_class][iou]
+                )
+                print(
+                    "%s %s IoU threshold %.2lf, Average Precision = %.2lf"
+                    % (pred_class, view, iou, ap * 100)
+                )
                 ap_result[view][pred_class][iou] = ap * 100
         return ap_result

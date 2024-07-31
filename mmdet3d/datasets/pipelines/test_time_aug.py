@@ -46,36 +46,37 @@ class MultiScaleFlipAug:
             "horizontal".
     """
 
-    def __init__(self,
-                 transforms,
-                 img_scale=None,
-                 scale_factor=None,
-                 flip=False,
-                 flip_direction='horizontal'):
+    def __init__(
+        self,
+        transforms,
+        img_scale=None,
+        scale_factor=None,
+        flip=False,
+        flip_direction="horizontal",
+    ):
         self.transforms = Compose(transforms)
-        assert (img_scale is None) ^ (scale_factor is None), (
-            'Must have but only one variable can be set')
+        assert (img_scale is None) ^ (
+            scale_factor is None
+        ), "Must have but only one variable can be set"
         if img_scale is not None:
-            self.img_scale = img_scale if isinstance(img_scale,
-                                                     list) else [img_scale]
-            self.scale_key = 'scale'
+            self.img_scale = img_scale if isinstance(img_scale, list) else [img_scale]
+            self.scale_key = "scale"
             assert mmcv.is_list_of(self.img_scale, tuple)
         else:
-            self.img_scale = scale_factor if isinstance(
-                scale_factor, list) else [scale_factor]
-            self.scale_key = 'scale_factor'
+            self.img_scale = (
+                scale_factor if isinstance(scale_factor, list) else [scale_factor]
+            )
+            self.scale_key = "scale_factor"
 
         self.flip = flip
-        self.flip_direction = flip_direction if isinstance(
-            flip_direction, list) else [flip_direction]
+        self.flip_direction = (
+            flip_direction if isinstance(flip_direction, list) else [flip_direction]
+        )
         assert mmcv.is_list_of(self.flip_direction, str)
-        if not self.flip and self.flip_direction != ['horizontal']:
-            warnings.warn(
-                'flip_direction has no effect when flip is set to False')
-        if (self.flip
-                and not any([t['type'] == 'RandomFlip' for t in transforms])):
-            warnings.warn(
-                'flip has no effect when RandomFlip is not in transforms')
+        if not self.flip and self.flip_direction != ["horizontal"]:
+            warnings.warn("flip_direction has no effect when flip is set to False")
+        if self.flip and not any([t["type"] == "RandomFlip" for t in transforms]):
+            warnings.warn("flip has no effect when RandomFlip is not in transforms")
 
     def __call__(self, results):
         """Call function to apply test time augment transforms on results.
@@ -90,14 +91,13 @@ class MultiScaleFlipAug:
         aug_data = []
         flip_args = [(False, None)]
         if self.flip:
-            flip_args += [(True, direction)
-                          for direction in self.flip_direction]
+            flip_args += [(True, direction) for direction in self.flip_direction]
         for scale in self.img_scale:
             for flip, direction in flip_args:
                 _results = results.copy()
                 _results[self.scale_key] = scale
-                _results['flip'] = flip
-                _results['flip_direction'] = direction
+                _results["flip"] = flip
+                _results["flip_direction"] = direction
                 data = self.transforms(_results)
                 aug_data.append(data)
         # list of dict to dict of list
@@ -109,9 +109,9 @@ class MultiScaleFlipAug:
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += f'(transforms={self.transforms}, '
-        repr_str += f'img_scale={self.img_scale}, flip={self.flip}, '
-        repr_str += f'flip_direction={self.flip_direction})'
+        repr_str += f"(transforms={self.transforms}, "
+        repr_str += f"img_scale={self.img_scale}, flip={self.flip}, "
+        repr_str += f"flip_direction={self.flip_direction})"
         return repr_str
 
 
@@ -139,19 +139,23 @@ class MultiScaleFlipAug3D(object):
             Note that it works only when 'flip' is turned on.
     """
 
-    def __init__(self,
-                 transforms,
-                 img_scale,
-                 pts_scale_ratio,
-                 flip=False,
-                 flip_direction='horizontal',
-                 pcd_horizontal_flip=False,
-                 pcd_vertical_flip=False):
+    def __init__(
+        self,
+        transforms,
+        img_scale,
+        pts_scale_ratio,
+        flip=False,
+        flip_direction="horizontal",
+        pcd_horizontal_flip=False,
+        pcd_vertical_flip=False,
+    ):
         self.transforms = Compose(transforms)
-        self.img_scale = img_scale if isinstance(img_scale,
-                                                 list) else [img_scale]
-        self.pts_scale_ratio = pts_scale_ratio \
-            if isinstance(pts_scale_ratio, list) else [float(pts_scale_ratio)]
+        self.img_scale = img_scale if isinstance(img_scale, list) else [img_scale]
+        self.pts_scale_ratio = (
+            pts_scale_ratio
+            if isinstance(pts_scale_ratio, list)
+            else [float(pts_scale_ratio)]
+        )
 
         assert mmcv.is_list_of(self.img_scale, tuple)
         assert mmcv.is_list_of(self.pts_scale_ratio, float)
@@ -160,17 +164,19 @@ class MultiScaleFlipAug3D(object):
         self.pcd_horizontal_flip = pcd_horizontal_flip
         self.pcd_vertical_flip = pcd_vertical_flip
 
-        self.flip_direction = flip_direction if isinstance(
-            flip_direction, list) else [flip_direction]
+        self.flip_direction = (
+            flip_direction if isinstance(flip_direction, list) else [flip_direction]
+        )
         assert mmcv.is_list_of(self.flip_direction, str)
-        if not self.flip and self.flip_direction != ['horizontal']:
-            warnings.warn(
-                'flip_direction has no effect when flip is set to False')
-        if (self.flip and not any([(t['type'] == 'RandomFlip3D'
-                                    or t['type'] == 'RandomFlip')
-                                   for t in transforms])):
-            warnings.warn(
-                'flip has no effect when RandomFlip is not in transforms')
+        if not self.flip and self.flip_direction != ["horizontal"]:
+            warnings.warn("flip_direction has no effect when flip is set to False")
+        if self.flip and not any(
+            [
+                (t["type"] == "RandomFlip3D" or t["type"] == "RandomFlip")
+                for t in transforms
+            ]
+        ):
+            warnings.warn("flip has no effect when RandomFlip is not in transforms")
 
     def __call__(self, results):
         """Call function to augment common fields in results.
@@ -188,10 +194,12 @@ class MultiScaleFlipAug3D(object):
         # to reduce unnecessary scenes when using double flip augmentation
         # during test time
         flip_aug = [True] if self.flip else [False]
-        pcd_horizontal_flip_aug = [False, True] \
-            if self.flip and self.pcd_horizontal_flip else [False]
-        pcd_vertical_flip_aug = [False, True] \
-            if self.flip and self.pcd_vertical_flip else [False]
+        pcd_horizontal_flip_aug = (
+            [False, True] if self.flip and self.pcd_horizontal_flip else [False]
+        )
+        pcd_vertical_flip_aug = (
+            [False, True] if self.flip and self.pcd_vertical_flip else [False]
+        )
         for scale in self.img_scale:
             for pts_scale_ratio in self.pts_scale_ratio:
                 for flip in flip_aug:
@@ -201,15 +209,12 @@ class MultiScaleFlipAug3D(object):
                                 # results.copy will cause bug
                                 # since it is shallow copy
                                 _results = deepcopy(results)
-                                _results['scale'] = scale
-                                _results['flip'] = flip
-                                _results['pcd_scale_factor'] = \
-                                    pts_scale_ratio
-                                _results['flip_direction'] = direction
-                                _results['pcd_horizontal_flip'] = \
-                                    pcd_horizontal_flip
-                                _results['pcd_vertical_flip'] = \
-                                    pcd_vertical_flip
+                                _results["scale"] = scale
+                                _results["flip"] = flip
+                                _results["pcd_scale_factor"] = pts_scale_ratio
+                                _results["flip_direction"] = direction
+                                _results["pcd_horizontal_flip"] = pcd_horizontal_flip
+                                _results["pcd_vertical_flip"] = pcd_vertical_flip
                                 data = self.transforms(_results)
                                 aug_data.append(data)
         # list of dict to dict of list
@@ -222,8 +227,8 @@ class MultiScaleFlipAug3D(object):
     def __repr__(self):
         """str: Return a string that describes the module."""
         repr_str = self.__class__.__name__
-        repr_str += f'(transforms={self.transforms}, '
-        repr_str += f'img_scale={self.img_scale}, flip={self.flip}, '
-        repr_str += f'pts_scale_ratio={self.pts_scale_ratio}, '
-        repr_str += f'flip_direction={self.flip_direction})'
+        repr_str += f"(transforms={self.transforms}, "
+        repr_str += f"img_scale={self.img_scale}, flip={self.flip}, "
+        repr_str += f"pts_scale_ratio={self.pts_scale_ratio}, "
+        repr_str += f"flip_direction={self.flip_direction})"
         return repr_str

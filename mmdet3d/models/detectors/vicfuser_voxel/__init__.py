@@ -27,11 +27,21 @@ from .vimi import VIMI
 # from .archive_code.vicfuser_voxel_msca_c2 import VICFuser_Voxel_MSCA_C2
 
 
-
-
 __all__ = [
-    'VICFuser_Voxel', 'VICFuser_Voxel_DCN', 'VICFuser_DEFORM', 'VICFuser_Voxel_MS_VI', 'VICFuser_Voxel_MS_Attention', 
-    'VICFuser_Voxel_AB','VICFuser_Voxel_MS_Attention_C','VICFuser_Voxel_CCM','VICFuser_Voxel_MSCA_C_CCM',
-    'VICFuser_Voxel_MSCA_C','VICFuser_Voxel_MSCA','VICFuser_Voxel_MS_CCM','VICFuser_BEV_MSCA_C_CCM',
-    'VIMI_VQVAE','VIMI', 'VIMI_VQVAE_Veh'
+    "VICFuser_Voxel",
+    "VICFuser_Voxel_DCN",
+    "VICFuser_DEFORM",
+    "VICFuser_Voxel_MS_VI",
+    "VICFuser_Voxel_MS_Attention",
+    "VICFuser_Voxel_AB",
+    "VICFuser_Voxel_MS_Attention_C",
+    "VICFuser_Voxel_CCM",
+    "VICFuser_Voxel_MSCA_C_CCM",
+    "VICFuser_Voxel_MSCA_C",
+    "VICFuser_Voxel_MSCA",
+    "VICFuser_Voxel_MS_CCM",
+    "VICFuser_BEV_MSCA_C_CCM",
+    "VIMI_VQVAE",
+    "VIMI",
+    "VIMI_VQVAE_Veh",
 ]

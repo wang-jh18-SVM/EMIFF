@@ -6,6 +6,7 @@ from torch.distributions import kl_divergence
 
 from .functions import vq, vq_st
 
+
 def to_scalar(arr):
     if type(arr) == list:
         return [x.item() for x in arr]
@@ -15,7 +16,7 @@ def to_scalar(arr):
 
 def weights_init(m):
     classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
+    if classname.find("Conv") != -1:
         try:
             nn.init.xavier_uniform_(m.weight.data)
             m.bias.data.fill_(0)
@@ -37,7 +38,7 @@ class VAE(nn.Module):
             nn.BatchNorm2d(dim),
             nn.ReLU(True),
             nn.Conv2d(dim, z_dim * 2, 3, 1, 0),
-            nn.BatchNorm2d(z_dim * 2)
+            nn.BatchNorm2d(z_dim * 2),
         )
 
         self.decoder = nn.Sequential(
@@ -51,7 +52,7 @@ class VAE(nn.Module):
             nn.BatchNorm2d(dim),
             nn.ReLU(True),
             nn.ConvTranspose2d(dim, input_dim, 4, 2, 1),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
         self.apply(weights_init)
@@ -59,7 +60,7 @@ class VAE(nn.Module):
     def forward(self, x):
         mu, logvar = self.encoder(x).chunk(2, dim=1)
 
-        q_z_x = Normal(mu, logvar.mul(.5).exp())
+        q_z_x = Normal(mu, logvar.mul(0.5).exp())
         p_z = Normal(torch.zeros_like(mu), torch.ones_like(logvar))
         kl_div = kl_divergence(q_z_x, p_z).sum(1).mean()
 
@@ -71,7 +72,7 @@ class VQEmbedding(nn.Module):
     def __init__(self, K, D):
         super().__init__()
         self.embedding = nn.Embedding(K, D)
-        self.embedding.weight.data.uniform_(-1./K, 1./K)
+        self.embedding.weight.data.uniform_(-1.0 / K, 1.0 / K)
 
     def forward(self, z_e_x):
         z_e_x_ = z_e_x.permute(0, 2, 3, 1).contiguous()
@@ -83,8 +84,9 @@ class VQEmbedding(nn.Module):
         z_q_x_, indices = vq_st(z_e_x_, self.embedding.weight.detach())
         z_q_x = z_q_x_.permute(0, 3, 1, 2).contiguous()
 
-        z_q_x_bar_flatten = torch.index_select(self.embedding.weight,
-            dim=0, index=indices)
+        z_q_x_bar_flatten = torch.index_select(
+            self.embedding.weight, dim=0, index=indices
+        )
         z_q_x_bar_ = z_q_x_bar_flatten.view_as(z_e_x_)
         z_q_x_bar = z_q_x_bar_.permute(0, 3, 1, 2).contiguous()
 
@@ -100,7 +102,7 @@ class ResBlock(nn.Module):
             nn.BatchNorm2d(dim),
             nn.ReLU(True),
             nn.Conv2d(dim, dim, 1),
-            nn.BatchNorm2d(dim)
+            nn.BatchNorm2d(dim),
         )
 
     def forward(self, x):
@@ -129,7 +131,7 @@ class VectorQuantizedVAE(nn.Module):
             nn.BatchNorm2d(dim),
             nn.ReLU(True),
             nn.ConvTranspose2d(dim, input_dim, 4, 2, 1),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
         self.apply(weights_init)
@@ -167,25 +169,17 @@ class GatedMaskedConv2d(nn.Module):
         self.mask_type = mask_type
         self.residual = residual
 
-        self.class_cond_embedding = nn.Embedding(
-            n_classes, 2 * dim
-        )
+        self.class_cond_embedding = nn.Embedding(n_classes, 2 * dim)
 
         kernel_shp = (kernel // 2 + 1, kernel)  # (ceil(n/2), n)
         padding_shp = (kernel // 2, kernel // 2)
-        self.vert_stack = nn.Conv2d(
-            dim, dim * 2,
-            kernel_shp, 1, padding_shp
-        )
+        self.vert_stack = nn.Conv2d(dim, dim * 2, kernel_shp, 1, padding_shp)
 
         self.vert_to_horiz = nn.Conv2d(2 * dim, 2 * dim, 1)
 
         kernel_shp = (1, kernel // 2 + 1)
         padding_shp = (0, kernel // 2)
-        self.horiz_stack = nn.Conv2d(
-            dim, dim * 2,
-            kernel_shp, 1, padding_shp
-        )
+        self.horiz_stack = nn.Conv2d(dim, dim * 2, kernel_shp, 1, padding_shp)
 
         self.horiz_resid = nn.Conv2d(dim, dim, 1)
 
@@ -196,16 +190,16 @@ class GatedMaskedConv2d(nn.Module):
         self.horiz_stack.weight.data[:, :, :, -1].zero_()  # Mask final column
 
     def forward(self, x_v, x_h, h):
-        if self.mask_type == 'A':
+        if self.mask_type == "A":
             self.make_causal()
 
         h = self.class_cond_embedding(h)
         h_vert = self.vert_stack(x_v)
-        h_vert = h_vert[:, :, :x_v.size(-1), :]
+        h_vert = h_vert[:, :, : x_v.size(-1), :]
         out_v = self.gate(h_vert + h[:, :, None, None])
 
         h_horiz = self.horiz_stack(x_h)
-        h_horiz = h_horiz[:, :, :, :x_h.size(-2)]
+        h_horiz = h_horiz[:, :, :, : x_h.size(-2)]
         v2h = self.vert_to_horiz(h_vert)
 
         out = self.gate(v2h + h_horiz + h[:, :, None, None])
@@ -231,7 +225,7 @@ class GatedPixelCNN(nn.Module):
         # Initial block with Mask-A convolution
         # Rest with Mask-B convolutions
         for i in range(n_layers):
-            mask_type = 'A' if i == 0 else 'B'
+            mask_type = "A" if i == 0 else "B"
             kernel = 7 if i == 0 else 3
             residual = False if i == 0 else True
 
@@ -241,15 +235,13 @@ class GatedPixelCNN(nn.Module):
 
         # Add the output layer
         self.output_conv = nn.Sequential(
-            nn.Conv2d(dim, 512, 1),
-            nn.ReLU(True),
-            nn.Conv2d(512, input_dim, 1)
+            nn.Conv2d(dim, 512, 1), nn.ReLU(True), nn.Conv2d(512, input_dim, 1)
         )
 
         self.apply(weights_init)
 
     def forward(self, x, label):
-        shp = x.size() + (-1, )
+        shp = x.size() + (-1,)
         x = self.embedding(x.view(-1)).view(shp)  # (B, H, W, C)
         x = x.permute(0, 3, 1, 2)  # (B, C, W, W)
 
@@ -261,16 +253,11 @@ class GatedPixelCNN(nn.Module):
 
     def generate(self, label, shape=(8, 8), batch_size=64):
         param = next(self.parameters())
-        x = torch.zeros(
-            (batch_size, *shape),
-            dtype=torch.int64, device=param.device
-        )
+        x = torch.zeros((batch_size, *shape), dtype=torch.int64, device=param.device)
 
         for i in range(shape[0]):
             for j in range(shape[1]):
                 logits = self.forward(x, label)
                 probs = F.softmax(logits[:, :, i, j], -1)
-                x.data[:, i, j].copy_(
-                    probs.multinomial(1).squeeze().data
-                )
+                x.data[:, i, j].copy_(probs.multinomial(1).squeeze().data)
         return x

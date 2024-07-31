@@ -30,26 +30,22 @@ def multibin_loss(pred_orientations, gt_orientations, num_dir_bins=4):
     for i in range(num_dir_bins):
         # bin cls loss
         cls_ce_loss = F.cross_entropy(
-            pred_orientations[:, (i * 2):(i * 2 + 2)],
+            pred_orientations[:, (i * 2) : (i * 2 + 2)],
             gt_orientations[:, i].long(),
-            reduction='mean')
+            reduction="mean",
+        )
         # regression loss
-        valid_mask_i = (gt_orientations[:, i] == 1)
+        valid_mask_i = gt_orientations[:, i] == 1
         cls_losses += cls_ce_loss
         if valid_mask_i.sum() > 0:
             start = num_dir_bins * 2 + i * 2
             end = start + 2
-            pred_offset = F.normalize(pred_orientations[valid_mask_i,
-                                                        start:end])
-            gt_offset_sin = torch.sin(gt_orientations[valid_mask_i,
-                                                      num_dir_bins + i])
-            gt_offset_cos = torch.cos(gt_orientations[valid_mask_i,
-                                                      num_dir_bins + i])
-            reg_loss = \
-                F.l1_loss(pred_offset[:, 0], gt_offset_sin,
-                          reduction='none') + \
-                F.l1_loss(pred_offset[:, 1], gt_offset_cos,
-                          reduction='none')
+            pred_offset = F.normalize(pred_orientations[valid_mask_i, start:end])
+            gt_offset_sin = torch.sin(gt_orientations[valid_mask_i, num_dir_bins + i])
+            gt_offset_cos = torch.cos(gt_orientations[valid_mask_i, num_dir_bins + i])
+            reg_loss = F.l1_loss(
+                pred_offset[:, 0], gt_offset_sin, reduction="none"
+            ) + F.l1_loss(pred_offset[:, 1], gt_offset_cos, reduction="none")
 
             reg_losses += reg_loss.sum()
             reg_cnt += valid_mask_i.sum()
@@ -68,9 +64,9 @@ class MultiBinLoss(nn.Module):
             to 1.0.
     """
 
-    def __init__(self, reduction='none', loss_weight=1.0):
+    def __init__(self, reduction="none", loss_weight=1.0):
         super(MultiBinLoss, self).__init__()
-        assert reduction in ['none', 'sum', 'mean']
+        assert reduction in ["none", "sum", "mean"]
         self.reduction = reduction
         self.loss_weight = loss_weight
 
@@ -85,9 +81,9 @@ class MultiBinLoss(nn.Module):
                 override the original reduction method of the loss.
                 Defaults to None.
         """
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
+        assert reduction_override in (None, "none", "mean", "sum")
+        reduction = reduction_override if reduction_override else self.reduction
         loss = self.loss_weight * multibin_loss(
-            pred, target, num_dir_bins=num_dir_bins, reduction=reduction)
+            pred, target, num_dir_bins=num_dir_bins, reduction=reduction
+        )
         return loss

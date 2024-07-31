@@ -71,84 +71,82 @@ def get_3d_8points(obj_size, yaw_lidar, center_lidar):
 
     return corners_3d_lidar.T
 
-def get_xyzlwhy(world_8_points):
-        
-    center_lidar_x = np.mean(world_8_points[:,0])
-    center_lidar_y = np.mean(world_8_points[:,1])
-    center_lidar_z = np.mean(world_8_points[:,2])
 
-    center_lidar = np.array([center_lidar_x,center_lidar_y,center_lidar_z])
+def get_xyzlwhy(world_8_points):
+    center_lidar_x = np.mean(world_8_points[:, 0])
+    center_lidar_y = np.mean(world_8_points[:, 1])
+    center_lidar_z = np.mean(world_8_points[:, 2])
+
+    center_lidar = np.array([center_lidar_x, center_lidar_y, center_lidar_z])
     # print(center_lidar)
 
-    x0,y0,z0 = world_8_points[0,:]
-    x1,y1,z1 = world_8_points[1,:]
-    x2,y2,z2 = world_8_points[2,:]
-    x3,y3,z3 = world_8_points[3,:]
-    x4,y4,z4 = world_8_points[4,:]
-    x5,y5,z5 = world_8_points[5,:]
-    x6,y6,z6 = world_8_points[6,:]
-    x7,y7,z7 = world_8_points[7,:]
+    x0, y0, z0 = world_8_points[0, :]
+    x1, y1, z1 = world_8_points[1, :]
+    x2, y2, z2 = world_8_points[2, :]
+    x3, y3, z3 = world_8_points[3, :]
+    x4, y4, z4 = world_8_points[4, :]
+    x5, y5, z5 = world_8_points[5, :]
+    x6, y6, z6 = world_8_points[6, :]
+    x7, y7, z7 = world_8_points[7, :]
 
-    delta_l1= np.array([x3-x0,y3-y0])
-    delta_l2= np.array([x2-x1,y2-y1])
-    delta_l3= np.array([x7-x4,y7-y4])
-    delta_l4= np.array([x6-x5,y6-y5])
-    l1 = np.linalg.norm(delta_l1,ord=2)
-    l2 = np.linalg.norm(delta_l2,ord=2)
-    l3 = np.linalg.norm(delta_l3,ord=2)
-    l4 = np.linalg.norm(delta_l4,ord=2)
+    delta_l1 = np.array([x3 - x0, y3 - y0])
+    delta_l2 = np.array([x2 - x1, y2 - y1])
+    delta_l3 = np.array([x7 - x4, y7 - y4])
+    delta_l4 = np.array([x6 - x5, y6 - y5])
+    l1 = np.linalg.norm(delta_l1, ord=2)
+    l2 = np.linalg.norm(delta_l2, ord=2)
+    l3 = np.linalg.norm(delta_l3, ord=2)
+    l4 = np.linalg.norm(delta_l4, ord=2)
     # print(l1,l2,l3,l4)
 
-    delta_w1= np.array([x1-x0,y1-y0])
-    delta_w2= np.array([x3-x2,y3-y2])
-    delta_w3= np.array([x5-x4,y5-y4])
-    delta_w4= np.array([x7-x6,y7-y6])
-    w1 = np.linalg.norm(delta_w1,ord=2)
-    w2 = np.linalg.norm(delta_w2,ord=2)
-    w3 = np.linalg.norm(delta_w3,ord=2)
-    w4 = np.linalg.norm(delta_w4,ord=2)
+    delta_w1 = np.array([x1 - x0, y1 - y0])
+    delta_w2 = np.array([x3 - x2, y3 - y2])
+    delta_w3 = np.array([x5 - x4, y5 - y4])
+    delta_w4 = np.array([x7 - x6, y7 - y6])
+    w1 = np.linalg.norm(delta_w1, ord=2)
+    w2 = np.linalg.norm(delta_w2, ord=2)
+    w3 = np.linalg.norm(delta_w3, ord=2)
+    w4 = np.linalg.norm(delta_w4, ord=2)
     # print(w1,w2,w3,w4)
 
-
-    h1= z4-z0
-    h2= z5-z1
-    h3= z6-z2
-    h4= z7-z3
+    h1 = z4 - z0
+    h2 = z5 - z1
+    h3 = z6 - z2
+    h4 = z7 - z3
     # print(h1,h2,h3,h4)
 
-    l = np.mean(np.array([l1,l2,l3,l4]))
-    w = np.mean(np.array([w1,w2,w3,w4]))
-    h = np.mean(np.array([h1,h2,h3,h4]))
+    l = np.mean(np.array([l1, l2, l3, l4]))
+    w = np.mean(np.array([w1, w2, w3, w4]))
+    h = np.mean(np.array([h1, h2, h3, h4]))
     # print(l,w,h)
 
-    obj_size=np.array([l,w,h])
-    
-    dx = y0-y1
-    dy = x1-x0
-    
+    obj_size = np.array([l, w, h])
+
+    dx = y0 - y1
+    dy = x1 - x0
+
     yaw_lidar = np.array([math.atan2(dy, dx)])
-    
+
     # sin_1=(x1-x0)/w
     # cos_1=(y0-y1)/w
-    
+
     # # if not (sin_1 <= 1.0 and sin_1 >= -1.0):
     # #     from IPython import embed
     # #     embed(header = 'sin is error')
-    
+
     # if not (sin_1 <= 1.0 and sin_1 >= -1.0):
     #     print('w: %f , x1: %f , x0: %f' %(w,x1,x0))
     #     print('sin: %f' %(sin_1))
     # sin_1 = np.clip(sin_1,-1.0,1.0)
 
-    
     # if cos_1 >= 0:
     #     yaw_lidar = np.array([np.arcsin(sin_1)])
     # else:
     #     yaw_lidar = np.array([np.pi - np.arcsin(sin_1)])
-    
-    gt_boxes = np.concatenate([center_lidar,obj_size,yaw_lidar])
+
+    gt_boxes = np.concatenate([center_lidar, obj_size, yaw_lidar])
     return gt_boxes
-    
+
 
 class Coord_transformation(object):
     """
@@ -186,12 +184,17 @@ class Coord_transformation(object):
         self.delta_y = None
 
     def __call__(self, point):
-
         path_all = {
             "path_root": self.path_root,
-            "path_lidar2world": "infrastructure-side/calib/virtuallidar_to_world/" + self.infra_name + ".json",
-            "path_lidar2novatel": "vehicle-side/calib/lidar_to_novatel/" + self.veh_name + ".json",
-            "path_novatel2world": "vehicle-side/calib/novatel_to_world/" + self.veh_name + ".json",
+            "path_lidar2world": "infrastructure-side/calib/virtuallidar_to_world/"
+            + self.infra_name
+            + ".json",
+            "path_lidar2novatel": "vehicle-side/calib/lidar_to_novatel/"
+            + self.veh_name
+            + ".json",
+            "path_novatel2world": "vehicle-side/calib/novatel_to_world/"
+            + self.veh_name
+            + ".json",
         }
 
         rotation, translation = self.forward(self.from_coord, self.to_coord, path_all)
@@ -200,9 +203,15 @@ class Coord_transformation(object):
     def get_transformation(self):
         path_all = {
             "path_root": self.path_root,
-            "path_lidar2world": "infrastructure-side/calib/virtuallidar_to_world/" + self.infra_name + ".json",
-            "path_lidar2novatel": "vehicle-side/calib/lidar_to_novatel/" + self.veh_name + ".json",
-            "path_novatel2world": "vehicle-side/calib/novatel_to_world/" + self.veh_name + ".json",
+            "path_lidar2world": "infrastructure-side/calib/virtuallidar_to_world/"
+            + self.infra_name
+            + ".json",
+            "path_lidar2novatel": "vehicle-side/calib/lidar_to_novatel/"
+            + self.veh_name
+            + ".json",
+            "path_novatel2world": "vehicle-side/calib/novatel_to_world/"
+            + self.veh_name
+            + ".json",
         }
 
         rotation, translation = self.forward(self.from_coord, self.to_coord, path_all)
@@ -218,7 +227,9 @@ class Coord_transformation(object):
                 rotation, translation = self.Coord_Vehicle_lidar2world(path_all)
                 return rotation, translation
             if from_coord == "Infrastructure_lidar" and to_coord == "Vehicle_lidar":
-                rotation, translation = self.Coord_Infrastructure_lidar2Vehicle_lidar(path_all)
+                rotation, translation = self.Coord_Infrastructure_lidar2Vehicle_lidar(
+                    path_all
+                )
                 return rotation, translation
             if from_coord == "World" and to_coord == "Vehicle_lidar":
                 rotation, translation = self.Coord_world2vehicel_lidar(path_all)
@@ -227,7 +238,9 @@ class Coord_transformation(object):
                 rotation, translation = self.Coord_World2infrastructure_lidar(path_all)
                 return rotation, translation
             if from_coord == "Vehicle_lidar" and to_coord == "Infrastructure_lidar":
-                rotation, translation = self.Coord_Vehicle_lidar2Infrastructure_lidar(path_all)
+                rotation, translation = self.Coord_Vehicle_lidar2Infrastructure_lidar(
+                    path_all
+                )
                 return rotation, translation
         else:
             raise ("error: wrong coordinate name")
@@ -256,7 +269,9 @@ class Coord_transformation(object):
         translation = np.array(translation).reshape(3, 1)
         rotation = np.array(rotation).reshape(3, 3)
         for point in input_point:
-            output_point = np.dot(rotation, input_point.reshape(3, 1)).reshape(3) + np.array(translation).reshape(3)
+            output_point = np.dot(rotation, input_point.reshape(3, 1)).reshape(
+                3
+            ) + np.array(translation).reshape(3)
         return np.array(output_point)
 
     def get_lidar2novatel(self, path_lidar2novatel):  # vehicle side
@@ -289,7 +304,6 @@ class Coord_transformation(object):
             my_json = json.load(load_f)
         return my_json
 
-
     def Coord_Infrastructure_lidar2world(self, path_all):
         rotation, translation, delta_x, delta_y = self.get_lidar2world(
             os.path.join(path_all["path_root"], path_all["path_lidar2world"])
@@ -314,7 +328,9 @@ class Coord_transformation(object):
             os.path.join(path_all["path_root"], path_all["path_lidar2novatel"])
         )
         rotationB2C, translationB2C = self.reverse(rotation, translation)
-        new_rotationA2C, new_translationA2C = self.muilt_coord(rotationA2B, translationA2B, rotationB2C, translationB2C)
+        new_rotationA2C, new_translationA2C = self.muilt_coord(
+            rotationA2B, translationA2B, rotationB2C, translationB2C
+        )
         return new_rotationA2C, new_translationA2C
 
     def Coord_Vehicle_lidar2world(self, path_all):
@@ -324,7 +340,9 @@ class Coord_transformation(object):
         rotationB2C, translationB2C = self.get_novatel2world(
             os.path.join(path_all["path_root"], path_all["path_novatel2world"])
         )
-        new_rotationA2C, new_translationA2C = self.muilt_coord(rotationA2B, translationA2B, rotationB2C, translationB2C)
+        new_rotationA2C, new_translationA2C = self.muilt_coord(
+            rotationA2B, translationA2B, rotationB2C, translationB2C
+        )
 
         return new_rotationA2C, new_translationA2C
 
@@ -340,7 +358,9 @@ class Coord_transformation(object):
 
         translationA2B = translationA2B + np.array([delta_x, delta_y, 0]).reshape(3, 1)
         rotationB2C, translationB2C = self.Coord_world2vehicel_lidar(path_all)
-        new_rotationA2C, new_translationA2C = self.muilt_coord(rotationA2B, translationA2B, rotationB2C, translationB2C)
+        new_rotationA2C, new_translationA2C = self.muilt_coord(
+            rotationA2B, translationA2B, rotationB2C, translationB2C
+        )
 
         return new_rotationA2C, new_translationA2C
 
@@ -350,18 +370,23 @@ class Coord_transformation(object):
 
         return rotation, translation
 
-
     def point_transformation(self, input_box, rotation, translation):
         translation = np.array(translation).reshape(3, 1)
         rotation = np.array(rotation).reshape(3, 3)
         output = []
         for box in input_box:
             if len(box) == 3:
-                output.append(np.dot(rotation, box.reshape(3, 1)).reshape(3) + np.array(translation).reshape(3))
+                output.append(
+                    np.dot(rotation, box.reshape(3, 1)).reshape(3)
+                    + np.array(translation).reshape(3)
+                )
                 continue
             output_point = []
             for point in box:
-                output_point.append(np.dot(rotation, point.reshape(3, 1)).reshape(3) + np.array(translation).reshape(3))
+                output_point.append(
+                    np.dot(rotation, point.reshape(3, 1)).reshape(3)
+                    + np.array(translation).reshape(3)
+                )
             output.append(output_point)
 
         return np.array(output)
@@ -369,16 +394,24 @@ class Coord_transformation(object):
     def single_point_transformation(self, input_point):
         path_all = {
             "path_root": self.path_root,
-            "path_lidar2world": "infrastructure-side/calib/virtuallidar_to_world/" + self.infra_name + ".json",
-            "path_lidar2novatel": "vehicle-side/calib/lidar_to_novatel/" + self.veh_name + ".json",
-            "path_novatel2world": "vehicle-side/calib/novatel_to_world/" + self.veh_name + ".json",
+            "path_lidar2world": "infrastructure-side/calib/virtuallidar_to_world/"
+            + self.infra_name
+            + ".json",
+            "path_lidar2novatel": "vehicle-side/calib/lidar_to_novatel/"
+            + self.veh_name
+            + ".json",
+            "path_novatel2world": "vehicle-side/calib/novatel_to_world/"
+            + self.veh_name
+            + ".json",
         }
 
         rotation, translation = self.forward(self.from_coord, self.to_coord, path_all)
         input_point = np.array(input_point).reshape(3, 1)
         translation = np.array(translation).reshape(3, 1)
         rotation = np.array(rotation).reshape(3, 3)
-        output_point = np.dot(rotation, input_point).reshape(3, 1) + np.array(translation).reshape(3, 1)
+        output_point = np.dot(rotation, input_point).reshape(3, 1) + np.array(
+            translation
+        ).reshape(3, 1)
 
         return output_point
 

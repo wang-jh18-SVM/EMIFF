@@ -36,20 +36,40 @@ class SemanticKITTIDataset(Custom3DDataset):
         test_mode (bool, optional): Whether the dataset is in test mode.
             Defaults to False.
     """
-    CLASSES = ('unlabeled', 'car', 'bicycle', 'motorcycle', 'truck', 'bus',
-               'person', 'bicyclist', 'motorcyclist', 'road', 'parking',
-               'sidewalk', 'other-ground', 'building', 'fence', 'vegetation',
-               'trunck', 'terrian', 'pole', 'traffic-sign')
+    CLASSES = (
+        "unlabeled",
+        "car",
+        "bicycle",
+        "motorcycle",
+        "truck",
+        "bus",
+        "person",
+        "bicyclist",
+        "motorcyclist",
+        "road",
+        "parking",
+        "sidewalk",
+        "other-ground",
+        "building",
+        "fence",
+        "vegetation",
+        "trunck",
+        "terrian",
+        "pole",
+        "traffic-sign",
+    )
 
-    def __init__(self,
-                 data_root,
-                 ann_file,
-                 pipeline=None,
-                 classes=None,
-                 modality=None,
-                 box_type_3d='Lidar',
-                 filter_empty_gt=False,
-                 test_mode=False):
+    def __init__(
+        self,
+        data_root,
+        ann_file,
+        pipeline=None,
+        classes=None,
+        modality=None,
+        box_type_3d="Lidar",
+        filter_empty_gt=False,
+        test_mode=False,
+    ):
         super().__init__(
             data_root=data_root,
             ann_file=ann_file,
@@ -58,7 +78,8 @@ class SemanticKITTIDataset(Custom3DDataset):
             modality=modality,
             box_type_3d=box_type_3d,
             filter_empty_gt=filter_empty_gt,
-            test_mode=test_mode)
+            test_mode=test_mode,
+        )
 
     def get_data_info(self, index):
         """Get data info according to the given index.
@@ -74,18 +95,17 @@ class SemanticKITTIDataset(Custom3DDataset):
                 - ann_info (dict): Annotation info.
         """
         info = self.data_infos[index]
-        sample_idx = info['point_cloud']['lidar_idx']
-        pts_filename = osp.join(self.data_root, info['pts_path'])
+        sample_idx = info["point_cloud"]["lidar_idx"]
+        pts_filename = osp.join(self.data_root, info["pts_path"])
 
         input_dict = dict(
-            pts_filename=pts_filename,
-            sample_idx=sample_idx,
-            file_name=pts_filename)
+            pts_filename=pts_filename, sample_idx=sample_idx, file_name=pts_filename
+        )
 
         if not self.test_mode:
             annos = self.get_ann_info(index)
-            input_dict['ann_info'] = annos
-            if self.filter_empty_gt and ~(annos['gt_labels_3d'] != -1).any():
+            input_dict["ann_info"] = annos
+            if self.filter_empty_gt and ~(annos["gt_labels_3d"] != -1).any():
                 return None
         return input_dict
 
@@ -103,8 +123,9 @@ class SemanticKITTIDataset(Custom3DDataset):
         # Use index to get the annos, thus the evalhook could also use this api
         info = self.data_infos[index]
 
-        pts_semantic_mask_path = osp.join(self.data_root,
-                                          info['pts_semantic_mask_path'])
+        pts_semantic_mask_path = osp.join(
+            self.data_root, info["pts_semantic_mask_path"]
+        )
 
         anns_results = dict(pts_semantic_mask_path=pts_semantic_mask_path)
         return anns_results

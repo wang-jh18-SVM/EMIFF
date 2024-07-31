@@ -37,12 +37,18 @@ def above_line(point, st, ed):
     if abs(b) > 1e-6 and abs(a) > 1e-6:
         y_intersec = (c - a * point[0]) / b
         return (
-            y_intersec >= st[1] and y_intersec <= ed[1] or y_intersec >= ed[1] and y_intersec <= st[1]
+            y_intersec >= st[1]
+            and y_intersec <= ed[1]
+            or y_intersec >= ed[1]
+            and y_intersec <= st[1]
         ) and y_intersec < point[1]
     elif abs(b) > 1e-6:
-        return (point[0] >= st[0] and point[0] <= ed[0] or point[0] >= ed[0] and point[0] <= st[0]) and point[1] >= st[
-            1
-        ]
+        return (
+            point[0] >= st[0]
+            and point[0] <= ed[0]
+            or point[0] >= ed[0]
+            and point[0] <= st[0]
+        ) and point[1] >= st[1]
     else:
         return 0
 

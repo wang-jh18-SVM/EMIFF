@@ -21,7 +21,11 @@ class Label(dict):
                 box = get_3d_8points(
                     [float(size["l"]), float(size["w"]), float(size["h"])],
                     float(label["rotation"]),
-                    [float(pos["x"]), float(pos["y"]), float(pos["z"]) - float(size["h"]) / 2],
+                    [
+                        float(pos["x"]),
+                        float(pos["y"]),
+                        float(pos["z"]) - float(size["h"]) / 2,
+                    ],
                 ).tolist()
             # determine if box is in extended range
             if filt is None or filt(box):
@@ -57,15 +61,19 @@ class Label_kitti(dict):
                 box = get_3d_8points(
                     [float(size["l"]), float(size["w"]), float(size["h"])],
                     float(label["rotation"]),
-                    [float(pos["x"]), float(pos["y"]), float(pos["z"]) - float(size["h"]) / 2],
+                    [
+                        float(pos["x"]),
+                        float(pos["y"]),
+                        float(pos["z"]) - float(size["h"]) / 2,
+                    ],
                 ).tolist()
             # determine if box is in extended range
             if filt is None or filt(box):
-                types.append(label['type'])
-                occluded_states.append(label['occluded_state'])
-                truncated_states.append(label['truncated_state'])
-                alphas.append(label['alpha'])
-                boxes_2d.append(label['2d_box'])
+                types.append(label["type"])
+                occluded_states.append(label["occluded_state"])
+                truncated_states.append(label["truncated_state"])
+                alphas.append(label["alpha"])
+                boxes_2d.append(label["2d_box"])
                 boxes.append(box)
                 class_types.append(name2id[label["type"].lower()])
         boxes = np.array(boxes)

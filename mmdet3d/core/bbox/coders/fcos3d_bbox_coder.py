@@ -21,11 +21,9 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
             box 2D attributes. Defaults to True.
     """
 
-    def __init__(self,
-                 base_depths=None,
-                 base_dims=None,
-                 code_size=7,
-                 norm_on_bbox=True):
+    def __init__(
+        self, base_depths=None, base_dims=None, code_size=7, norm_on_bbox=True
+    ):
         super(FCOS3DBBoxCoder, self).__init__()
         self.base_depths = base_depths
         self.base_dims = base_dims
@@ -70,28 +68,34 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
             std = self.base_depths[0][1]
             bbox[:, 2] = mean + bbox.clone()[:, 2] * std
         else:  # multi-class priors
-            assert len(self.base_depths) == cls_score.shape[1], \
-                'The number of multi-class depth priors should be equal to ' \
-                'the number of categories.'
+            assert len(self.base_depths) == cls_score.shape[1], (
+                "The number of multi-class depth priors should be equal to "
+                "the number of categories."
+            )
             indices = cls_score.max(dim=1)[1]
-            depth_priors = cls_score.new_tensor(
-                self.base_depths)[indices, :].permute(0, 3, 1, 2)
+            depth_priors = cls_score.new_tensor(self.base_depths)[indices, :].permute(
+                0, 3, 1, 2
+            )
             mean = depth_priors[:, 0]
             std = depth_priors[:, 1]
             bbox[:, 2] = mean + bbox.clone()[:, 2] * std
 
         bbox[:, 3:6] = bbox[:, 3:6].exp()
         if self.base_dims is not None:
-            assert len(self.base_dims) == cls_score.shape[1], \
-                'The number of anchor sizes should be equal to the number ' \
-                'of categories.'
+            assert len(self.base_dims) == cls_score.shape[1], (
+                "The number of anchor sizes should be equal to the number "
+                "of categories."
+            )
             indices = cls_score.max(dim=1)[1]
-            size_priors = cls_score.new_tensor(
-                self.base_dims)[indices, :].permute(0, 3, 1, 2)
+            size_priors = cls_score.new_tensor(self.base_dims)[indices, :].permute(
+                0, 3, 1, 2
+            )
             bbox[:, 3:6] = size_priors * bbox.clone()[:, 3:6]
 
-        assert self.norm_on_bbox is True, 'Setting norm_on_bbox to False '\
-            'has not been thoroughly tested for FCOS3D.'
+        assert self.norm_on_bbox is True, (
+            "Setting norm_on_bbox to False "
+            "has not been thoroughly tested for FCOS3D."
+        )
         if self.norm_on_bbox:
             if not training:
                 # Note that this line is conducted only when testing
@@ -118,10 +122,10 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
         """
         if bbox.shape[0] > 0:
             dir_rot = limit_period(bbox[..., 6] - dir_offset, 0, np.pi)
-            bbox[..., 6] = \
-                dir_rot + dir_offset + np.pi * dir_cls.to(bbox.dtype)
+            bbox[..., 6] = dir_rot + dir_offset + np.pi * dir_cls.to(bbox.dtype)
 
-        bbox[:, 6] = torch.atan2(centers2d[:, 0] - cam2img[0, 2],
-                                 cam2img[0, 0]) + bbox[:, 6]
+        bbox[:, 6] = (
+            torch.atan2(centers2d[:, 0] - cam2img[0, 2], cam2img[0, 0]) + bbox[:, 6]
+        )
 
         return bbox

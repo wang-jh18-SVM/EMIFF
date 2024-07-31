@@ -92,16 +92,17 @@ class Coord3DMode(IntEnum):
         """
         if isinstance(input, BaseInstance3DBoxes):
             return Coord3DMode.convert_box(
-                input, src, dst, rt_mat=rt_mat, with_yaw=with_yaw)
+                input, src, dst, rt_mat=rt_mat, with_yaw=with_yaw
+            )
         elif isinstance(input, BasePoints):
             return Coord3DMode.convert_point(input, src, dst, rt_mat=rt_mat)
         elif isinstance(input, (tuple, list, np.ndarray, torch.Tensor)):
             if is_point:
-                return Coord3DMode.convert_point(
-                    input, src, dst, rt_mat=rt_mat)
+                return Coord3DMode.convert_point(input, src, dst, rt_mat=rt_mat)
             else:
                 return Coord3DMode.convert_box(
-                    input, src, dst, rt_mat=rt_mat, with_yaw=with_yaw)
+                    input, src, dst, rt_mat=rt_mat, with_yaw=with_yaw
+                )
         else:
             raise NotImplementedError
 
@@ -161,8 +162,9 @@ class Coord3DMode(IntEnum):
         single_point = isinstance(point, (list, tuple))
         if single_point:
             assert len(point) >= 3, (
-                'CoordMode.convert takes either a k-tuple/list or '
-                'an Nxk array/tensor, where k >= 3')
+                "CoordMode.convert takes either a k-tuple/list or "
+                "an Nxk array/tensor, where k >= 3"
+            )
             arr = torch.tensor(point)[None, :]
         else:
             # avoid modifying the input point
@@ -194,14 +196,15 @@ class Coord3DMode(IntEnum):
                 rt_mat = arr.new_tensor([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
         else:
             raise NotImplementedError(
-                f'Conversion from Coord3DMode {src} to {dst} '
-                'is not supported yet')
+                f"Conversion from Coord3DMode {src} to {dst} " "is not supported yet"
+            )
 
         if not isinstance(rt_mat, torch.Tensor):
             rt_mat = arr.new_tensor(rt_mat)
         if rt_mat.size(1) == 4:
             extended_xyz = torch.cat(
-                [arr[..., :3], arr.new_ones(arr.size(0), 1)], dim=-1)
+                [arr[..., :3], arr.new_ones(arr.size(0), 1)], dim=-1
+            )
             xyz = extended_xyz @ rt_mat.t()
         else:
             xyz = arr[..., :3] @ rt_mat.t()
@@ -224,11 +227,11 @@ class Coord3DMode(IntEnum):
                 target_type = DepthPoints
             else:
                 raise NotImplementedError(
-                    f'Conversion to {dst} through {original_type}'
-                    ' is not supported yet')
+                    f"Conversion to {dst} through {original_type}"
+                    " is not supported yet"
+                )
             return target_type(
-                arr,
-                points_dim=arr.size(-1),
-                attribute_dims=point.attribute_dims)
+                arr, points_dim=arr.size(-1), attribute_dims=point.attribute_dims
+            )
         else:
             return arr

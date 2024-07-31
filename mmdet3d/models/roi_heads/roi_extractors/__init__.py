@@ -4,6 +4,7 @@ from .single_roiaware_extractor import Single3DRoIAwareExtractor
 from .single_roipoint_extractor import Single3DRoIPointExtractor
 
 __all__ = [
-    'SingleRoIExtractor', 'Single3DRoIAwareExtractor',
-    'Single3DRoIPointExtractor'
+    "SingleRoIExtractor",
+    "Single3DRoIAwareExtractor",
+    "Single3DRoIPointExtractor",
 ]

@@ -22,8 +22,7 @@ class DGCNNHead(Base3DDecodeHead):
     def __init__(self, fp_channels=(1216, 512), **kwargs):
         super(DGCNNHead, self).__init__(**kwargs)
 
-        self.FP_module = DGCNNFPModule(
-            mlp_channels=fp_channels, act_cfg=self.act_cfg)
+        self.FP_module = DGCNNFPModule(mlp_channels=fp_channels, act_cfg=self.act_cfg)
 
         # https://github.com/charlesq34/pointnet2/blob/master/models/pointnet2_sem_seg.py#L40
         self.pre_seg_conv = ConvModule(
@@ -33,7 +32,8 @@ class DGCNNHead(Base3DDecodeHead):
             bias=False,
             conv_cfg=self.conv_cfg,
             norm_cfg=self.norm_cfg,
-            act_cfg=self.act_cfg)
+            act_cfg=self.act_cfg,
+        )
 
     def _extract_input(self, feat_dict):
         """Extract inputs from features dictionary.
@@ -44,7 +44,7 @@ class DGCNNHead(Base3DDecodeHead):
         Returns:
             torch.Tensor: points for decoder.
         """
-        fa_points = feat_dict['fa_points']
+        fa_points = feat_dict["fa_points"]
 
         return fa_points
 

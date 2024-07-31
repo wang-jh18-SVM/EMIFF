@@ -6,7 +6,12 @@ from tools.data_converter.gen_kitti.gen_calib2kitti_coop import gen_calib2kitti_
 from gen_kitti.gen_ImageSets_from_split_data import gen_ImageSet_from_coop_split_data
 
 parser = argparse.ArgumentParser("Generate the Kitti Format Data")
-parser.add_argument("--source-root", type=str, default="./data/DAIR_V2X/cooperative-vehicle-infrastructure", help="Raw data root about DAIR-V2X.")
+parser.add_argument(
+    "--source-root",
+    type=str,
+    default="./data/DAIR_V2X/cooperative-vehicle-infrastructure",
+    help="Raw data root about DAIR-V2X.",
+)
 parser.add_argument(
     "--target-root",
     type=str,
@@ -19,10 +24,29 @@ parser.add_argument(
     default="data/split_datas/cooperative-split-data.json",
     help="Json file to split the data into training/validation/testing.",
 )
-parser.add_argument("--label-type", type=str, default="lidar", help="label type from ['lidar', 'camera']")
-parser.add_argument("--sensor-view", type=str, default="vehicle", help="Sensor view from ['infrastructure', 'vehicle']")
-parser.add_argument("--no-classmerge", action="store_true", help="Not to merge the four classes [Car, Truck, Van, Bus] into one class [Car]")
-parser.add_argument("--temp-root", type=str, default="./tmp_file", help="Temporary intermediate file root.")
+parser.add_argument(
+    "--label-type",
+    type=str,
+    default="lidar",
+    help="label type from ['lidar', 'camera']",
+)
+parser.add_argument(
+    "--sensor-view",
+    type=str,
+    default="vehicle",
+    help="Sensor view from ['infrastructure', 'vehicle']",
+)
+parser.add_argument(
+    "--no-classmerge",
+    action="store_true",
+    help="Not to merge the four classes [Car, Truck, Van, Bus] into one class [Car]",
+)
+parser.add_argument(
+    "--temp-root",
+    type=str,
+    default="./tmp_file",
+    help="Temporary intermediate file root.",
+)
 
 
 def mdkir_kitti(target_root):
@@ -73,7 +97,6 @@ if __name__ == "__main__":
     ## Transform LABEL from world coord into vehicle camera coord
     gen_veh_lidar2veh_cam(source_root, temp_root, label_type=label_type)
 
-
     json_root = os.path.join(temp_root, "label", label_type)
     kitti_label_root = os.path.join(target_root, "training/label_2")
     json2kitti(json_root, kitti_label_root)
@@ -83,11 +106,10 @@ if __name__ == "__main__":
 
     os.system("rm -rf %s" % temp_root)
 
-
     print("================ Start to Generate Calibration Files ================")
     sensor_view = args.sensor_view
 
-    #Obtain CALIB from both Vehicle and Infrastructure side
+    # Obtain CALIB from both Vehicle and Infrastructure side
     gen_calib2kitti_coop(source_root, target_root, label_type=label_type)
 
     print("================ Start to Generate ImageSet Files ================")

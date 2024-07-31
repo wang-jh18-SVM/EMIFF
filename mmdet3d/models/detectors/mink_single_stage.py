@@ -28,14 +28,16 @@ class MinkSingleStage3DDetector(Base3DDetector):
             Defaults to None.
     """
 
-    def __init__(self,
-                 backbone,
-                 head,
-                 voxel_size,
-                 train_cfg=None,
-                 test_cfg=None,
-                 init_cfg=None,
-                 pretrained=None):
+    def __init__(
+        self,
+        backbone,
+        head,
+        voxel_size,
+        train_cfg=None,
+        test_cfg=None,
+        init_cfg=None,
+        pretrained=None,
+    ):
         super(MinkSingleStage3DDetector, self).__init__(init_cfg)
         self.backbone = build_backbone(backbone)
         head.update(train_cfg=train_cfg)
@@ -55,7 +57,8 @@ class MinkSingleStage3DDetector(Base3DDetector):
         """
         coordinates, features = ME.utils.batch_sparse_collate(
             [(p[:, :3] / self.voxel_size, p[:, 3:]) for p in points],
-            device=points[0].device)
+            device=points[0].device,
+        )
         x = ME.SparseTensor(coordinates=coordinates, features=features)
         x = self.backbone(x)
         return x
@@ -74,8 +77,7 @@ class MinkSingleStage3DDetector(Base3DDetector):
             dict: Centerness, bbox and classification loss values.
         """
         x = self.extract_feat(points)
-        losses = self.head.forward_train(x, gt_bboxes_3d, gt_labels_3d,
-                                         img_metas)
+        losses = self.head.forward_train(x, gt_bboxes_3d, gt_labels_3d, img_metas)
         return losses
 
     def simple_test(self, points, img_metas, *args, **kwargs):

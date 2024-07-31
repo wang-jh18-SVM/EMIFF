@@ -37,6 +37,7 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
         with_yaw (bool): If True, the value of yaw will be set to 0 as minmax
             boxes.
     """
+
     YAW_AXIS = 2
 
     @property
@@ -76,8 +77,8 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
 
         dims = self.dims
         corners_norm = torch.from_numpy(
-            np.stack(np.unravel_index(np.arange(8), [2] * 3), axis=1)).to(
-                device=dims.device, dtype=dims.dtype)
+            np.stack(np.unravel_index(np.arange(8), [2] * 3), axis=1)
+        ).to(device=dims.device, dtype=dims.dtype)
 
         corners_norm = corners_norm[[0, 1, 3, 2, 4, 5, 7, 6]]
         # use relative origin (0.5, 0.5, 0)
@@ -85,8 +86,7 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
         corners = dims.view([-1, 1, 3]) * corners_norm.reshape([1, 8, 3])
 
         # rotate around z axis
-        corners = rotation_3d_in_axis(
-            corners, self.tensor[:, 6], axis=self.YAW_AXIS)
+        corners = rotation_3d_in_axis(corners, self.tensor[:, 6], axis=self.YAW_AXIS)
         corners += self.tensor[:, :3].view(-1, 1, 3)
         return corners
 
@@ -108,15 +108,14 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
         if not isinstance(angle, torch.Tensor):
             angle = self.tensor.new_tensor(angle)
 
-        assert angle.shape == torch.Size([3, 3]) or angle.numel() == 1, \
-            f'invalid rotation angle shape {angle.shape}'
+        assert (
+            angle.shape == torch.Size([3, 3]) or angle.numel() == 1
+        ), f"invalid rotation angle shape {angle.shape}"
 
         if angle.numel() == 1:
             self.tensor[:, 0:3], rot_mat_T = rotation_3d_in_axis(
-                self.tensor[:, 0:3],
-                angle,
-                axis=self.YAW_AXIS,
-                return_mat=True)
+                self.tensor[:, 0:3], angle, axis=self.YAW_AXIS, return_mat=True
+            )
         else:
             rot_mat_T = angle
             rot_sin = rot_mat_T[0, 1]
@@ -130,12 +129,14 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
             # for axis-aligned boxes, we take the new
             # enclosing axis-aligned boxes after rotation
             corners_rot = self.corners @ rot_mat_T
-            new_x_size = corners_rot[..., 0].max(
-                dim=1, keepdim=True)[0] - corners_rot[..., 0].min(
-                    dim=1, keepdim=True)[0]
-            new_y_size = corners_rot[..., 1].max(
-                dim=1, keepdim=True)[0] - corners_rot[..., 1].min(
-                    dim=1, keepdim=True)[0]
+            new_x_size = (
+                corners_rot[..., 0].max(dim=1, keepdim=True)[0]
+                - corners_rot[..., 0].min(dim=1, keepdim=True)[0]
+            )
+            new_y_size = (
+                corners_rot[..., 1].max(dim=1, keepdim=True)[0]
+                - corners_rot[..., 1].min(dim=1, keepdim=True)[0]
+            )
             self.tensor[:, 3:5] = torch.cat((new_x_size, new_y_size), dim=-1)
 
         if points is not None:
@@ -150,7 +151,7 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
                 raise ValueError
             return points, rot_mat_T
 
-    def flip(self, bev_direction='horizontal', points=None):
+    def flip(self, bev_direction="horizontal", points=None):
         """Flip the boxes in BEV along given BEV direction.
 
         In Depth coordinates, it flips x (horizontal) or y (vertical) axis.
@@ -164,12 +165,12 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
         Returns:
             torch.Tensor, numpy.ndarray or None: Flipped points.
         """
-        assert bev_direction in ('horizontal', 'vertical')
-        if bev_direction == 'horizontal':
+        assert bev_direction in ("horizontal", "vertical")
+        if bev_direction == "horizontal":
             self.tensor[:, 0::7] = -self.tensor[:, 0::7]
             if self.with_yaw:
                 self.tensor[:, 6] = -self.tensor[:, 6] + np.pi
-        elif bev_direction == 'vertical':
+        elif bev_direction == "vertical":
             self.tensor[:, 1::7] = -self.tensor[:, 1::7]
             if self.with_yaw:
                 self.tensor[:, 6] = -self.tensor[:, 6]
@@ -177,9 +178,9 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
         if points is not None:
             assert isinstance(points, (torch.Tensor, np.ndarray, BasePoints))
             if isinstance(points, (torch.Tensor, np.ndarray)):
-                if bev_direction == 'horizontal':
+                if bev_direction == "horizontal":
                     points[:, 0] = -points[:, 0]
-                elif bev_direction == 'vertical':
+                elif bev_direction == "vertical":
                     points[:, 1] = -points[:, 1]
             elif isinstance(points, BasePoints):
                 points.flip(bev_direction)
@@ -202,8 +203,8 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
                 The converted box of the same type in the ``dst`` mode.
         """
         from .box_3d_mode import Box3DMode
-        return Box3DMode.convert(
-            box=self, src=Box3DMode.DEPTH, dst=dst, rt_mat=rt_mat)
+
+        return Box3DMode.convert(box=self, src=Box3DMode.DEPTH, dst=dst, rt_mat=rt_mat)
 
     def enlarged_box(self, extra_width):
         """Enlarge the length, width and height boxes.
@@ -240,27 +241,39 @@ class DepthInstance3DBoxes(BaseInstance3DBoxes):
         rot_mat_T[..., 2, 2] = 1
 
         # Get the object surface center
-        offset = obj_size.new_tensor([[0, 0, 1], [0, 0, -1], [0, 1, 0],
-                                      [0, -1, 0], [1, 0, 0], [-1, 0, 0]])
+        offset = obj_size.new_tensor(
+            [[0, 0, 1], [0, 0, -1], [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0]]
+        )
         offset = offset.view(1, 6, 3) / 2
-        surface_3d = (offset *
-                      obj_size.view(batch_size, 1, 3).repeat(1, 6, 1)).reshape(
-                          -1, 3)
+        surface_3d = (offset * obj_size.view(batch_size, 1, 3).repeat(1, 6, 1)).reshape(
+            -1, 3
+        )
 
         # Get the object line center
-        offset = obj_size.new_tensor([[1, 0, 1], [-1, 0, 1], [0, 1, 1],
-                                      [0, -1, 1], [1, 0, -1], [-1, 0, -1],
-                                      [0, 1, -1], [0, -1, -1], [1, 1, 0],
-                                      [1, -1, 0], [-1, 1, 0], [-1, -1, 0]])
+        offset = obj_size.new_tensor(
+            [
+                [1, 0, 1],
+                [-1, 0, 1],
+                [0, 1, 1],
+                [0, -1, 1],
+                [1, 0, -1],
+                [-1, 0, -1],
+                [0, 1, -1],
+                [0, -1, -1],
+                [1, 1, 0],
+                [1, -1, 0],
+                [-1, 1, 0],
+                [-1, -1, 0],
+            ]
+        )
         offset = offset.view(1, 12, 3) / 2
 
-        line_3d = (offset *
-                   obj_size.view(batch_size, 1, 3).repeat(1, 12, 1)).reshape(
-                       -1, 3)
+        line_3d = (offset * obj_size.view(batch_size, 1, 3).repeat(1, 12, 1)).reshape(
+            -1, 3
+        )
 
         surface_rot = rot_mat_T.repeat(6, 1, 1)
-        surface_3d = torch.matmul(surface_3d.unsqueeze(-2),
-                                  surface_rot).squeeze(-2)
+        surface_3d = torch.matmul(surface_3d.unsqueeze(-2), surface_rot).squeeze(-2)
         surface_center = center.repeat(1, 6, 1).reshape(-1, 3) + surface_3d
 
         line_rot = rot_mat_T.repeat(12, 1, 1)

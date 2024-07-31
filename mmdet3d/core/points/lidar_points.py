@@ -23,18 +23,19 @@ class LiDARPoints(BasePoints):
 
     def __init__(self, tensor, points_dim=3, attribute_dims=None):
         super(LiDARPoints, self).__init__(
-            tensor, points_dim=points_dim, attribute_dims=attribute_dims)
+            tensor, points_dim=points_dim, attribute_dims=attribute_dims
+        )
         self.rotation_axis = 2
 
-    def flip(self, bev_direction='horizontal'):
+    def flip(self, bev_direction="horizontal"):
         """Flip the points along given BEV direction.
 
         Args:
             bev_direction (str): Flip direction (horizontal or vertical).
         """
-        if bev_direction == 'horizontal':
+        if bev_direction == "horizontal":
             self.tensor[:, 1] = -self.tensor[:, 1]
-        elif bev_direction == 'vertical':
+        elif bev_direction == "vertical":
             self.tensor[:, 0] = -self.tensor[:, 0]
 
     def convert_to(self, dst, rt_mat=None):
@@ -54,5 +55,7 @@ class LiDARPoints(BasePoints):
                 in the `dst` mode.
         """
         from mmdet3d.core.bbox import Coord3DMode
+
         return Coord3DMode.convert_point(
-            point=self, src=Coord3DMode.LIDAR, dst=dst, rt_mat=rt_mat)
+            point=self, src=Coord3DMode.LIDAR, dst=dst, rt_mat=rt_mat
+        )

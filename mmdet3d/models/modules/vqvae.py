@@ -5,7 +5,6 @@ import numpy as np
 import os
 
 
-
 class ResidualLayer(nn.Module):
     """
     One residual layer inputs:
@@ -18,11 +17,11 @@ class ResidualLayer(nn.Module):
         super(ResidualLayer, self).__init__()
         self.res_block = nn.Sequential(
             nn.ReLU(True),
-            nn.Conv2d(in_dim, res_h_dim, kernel_size=3,
-                      stride=1, padding=1, bias=False),
+            nn.Conv2d(
+                in_dim, res_h_dim, kernel_size=3, stride=1, padding=1, bias=False
+            ),
             nn.ReLU(True),
-            nn.Conv2d(res_h_dim, h_dim, kernel_size=1,
-                      stride=1, bias=False)
+            nn.Conv2d(res_h_dim, h_dim, kernel_size=1, stride=1, bias=False),
         )
 
     def forward(self, x):
@@ -43,7 +42,8 @@ class ResidualStack(nn.Module):
         super(ResidualStack, self).__init__()
         self.n_res_layers = n_res_layers
         self.stack = nn.ModuleList(
-            [ResidualLayer(in_dim, h_dim, res_h_dim)]*n_res_layers)
+            [ResidualLayer(in_dim, h_dim, res_h_dim)] * n_res_layers
+        )
 
     def forward(self, x):
         for layer in self.stack:
@@ -52,10 +52,9 @@ class ResidualStack(nn.Module):
         return x
 
 
-
 class Encoder(nn.Module):
     """
-    This is the q_theta (z|x) network. Given a data sample x q_theta 
+    This is the q_theta (z|x) network. Given a data sample x q_theta
     maps to the latent space x -> z.
 
     For a VQ VAE, q_theta outputs parameters of a categorical distribution.
@@ -73,17 +72,14 @@ class Encoder(nn.Module):
         kernel = 4
         stride = 2
         self.conv_stack = nn.Sequential(
-            nn.Conv2d(in_dim, h_dim // 2, kernel_size=kernel,
-                      stride=stride, padding=1),
+            nn.Conv2d(in_dim, h_dim // 2, kernel_size=kernel, stride=stride, padding=1),
             nn.ReLU(),
-            nn.Conv2d(h_dim // 2, h_dim, kernel_size=kernel,
-                      stride=stride, padding=1),
+            nn.Conv2d(h_dim // 2, h_dim, kernel_size=kernel, stride=stride, padding=1),
             nn.ReLU(),
-            nn.Conv2d(h_dim, h_dim, kernel_size=kernel-1,
-                      stride=stride-1, padding=1),
-            ResidualStack(
-                h_dim, h_dim, res_h_dim, n_res_layers)
-
+            nn.Conv2d(
+                h_dim, h_dim, kernel_size=kernel - 1, stride=stride - 1, padding=1
+            ),
+            ResidualStack(h_dim, h_dim, res_h_dim, n_res_layers),
         )
 
     def forward(self, x):
@@ -92,7 +88,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     """
-    This is the p_phi (x|z) network. Given a latent sample z p_phi 
+    This is the p_phi (x|z) network. Given a latent sample z p_phi
     maps back to the original space z -> x.
 
     Inputs:
@@ -110,13 +106,16 @@ class Decoder(nn.Module):
 
         self.inverse_conv_stack = nn.Sequential(
             nn.ConvTranspose2d(
-                in_dim, h_dim, kernel_size=kernel-1, stride=stride-1, padding=1),
+                in_dim, h_dim, kernel_size=kernel - 1, stride=stride - 1, padding=1
+            ),
             ResidualStack(h_dim, h_dim, res_h_dim, n_res_layers),
-            nn.ConvTranspose2d(h_dim, h_dim // 2,
-                               kernel_size=kernel, stride=stride, padding=1),
+            nn.ConvTranspose2d(
+                h_dim, h_dim // 2, kernel_size=kernel, stride=stride, padding=1
+            ),
             nn.ReLU(),
-            nn.ConvTranspose2d(h_dim//2, out_dim, kernel_size=kernel,
-                               stride=stride, padding=1)
+            nn.ConvTranspose2d(
+                h_dim // 2, out_dim, kernel_size=kernel, stride=stride, padding=1
+            ),
         )
 
     def forward(self, x):
@@ -147,7 +146,7 @@ class VectorQuantizer(nn.Module):
 
     def forward(self, z):
         """
-        Inputs the output of the encoder network z and maps it to a discrete 
+        Inputs the output of the encoder network z and maps it to a discrete
         one-hot vector that is the index of the closest embedding vector e_j
 
         z (continuous) -> z_q (discrete)
@@ -165,22 +164,24 @@ class VectorQuantizer(nn.Module):
         z_flattened = z.view(-1, self.e_dim)
         # distances from z to embeddings e_j (z - e)^2 = z^2 + e^2 - 2 e * z
 
-        d = torch.sum(z_flattened ** 2, dim=1, keepdim=True) + \
-            torch.sum(self.embedding.weight**2, dim=1) - 2 * \
-            torch.matmul(z_flattened, self.embedding.weight.t())
+        d = (
+            torch.sum(z_flattened**2, dim=1, keepdim=True)
+            + torch.sum(self.embedding.weight**2, dim=1)
+            - 2 * torch.matmul(z_flattened, self.embedding.weight.t())
+        )
 
         # find closest encodings
         min_encoding_indices = torch.argmin(d, dim=1).unsqueeze(1)
-        min_encodings = torch.zeros(
-            min_encoding_indices.shape[0], self.n_e).to(device)
+        min_encodings = torch.zeros(min_encoding_indices.shape[0], self.n_e).to(device)
         min_encodings.scatter_(1, min_encoding_indices, 1)
 
         # get quantized latent vectors
         z_q = torch.matmul(min_encodings, self.embedding.weight).view(z.shape)
 
         # compute loss for embedding
-        loss = torch.mean((z_q.detach()-z)**2) + self.beta * \
-            torch.mean((z_q - z.detach()) ** 2)
+        loss = torch.mean((z_q.detach() - z) ** 2) + self.beta * torch.mean(
+            (z_q - z.detach()) ** 2
+        )
 
         # preserve gradients
         z_q = z + (z_q - z).detach()
@@ -195,20 +196,30 @@ class VectorQuantizer(nn.Module):
         return loss, z_q, perplexity, min_encodings, min_encoding_indices
 
 
-
 class VQVAE(nn.Module):
-    def __init__(self, feature_channel, h_dim, res_h_dim, n_res_layers,
-                 n_embeddings, embedding_dim, beta, save_img_embedding_map=False):
+    def __init__(
+        self,
+        feature_channel,
+        h_dim,
+        res_h_dim,
+        n_res_layers,
+        n_embeddings,
+        embedding_dim,
+        beta,
+        save_img_embedding_map=False,
+    ):
         super(VQVAE, self).__init__()
         # encode image into continuous latent space
         self.encoder = Encoder(feature_channel, h_dim, n_res_layers, res_h_dim)
         self.pre_quantization_conv = nn.Conv2d(
-            h_dim, embedding_dim, kernel_size=1, stride=1)
+            h_dim, embedding_dim, kernel_size=1, stride=1
+        )
         # pass continuous latent vector through discretization bottleneck
-        self.vector_quantization = VectorQuantizer(
-            n_embeddings, embedding_dim, beta)
+        self.vector_quantization = VectorQuantizer(n_embeddings, embedding_dim, beta)
         # decode the discrete latent representation
-        self.decoder = Decoder(embedding_dim, h_dim, feature_channel, n_res_layers, res_h_dim)
+        self.decoder = Decoder(
+            embedding_dim, h_dim, feature_channel, n_res_layers, res_h_dim
+        )
 
         if save_img_embedding_map:
             self.img_to_embedding_map = {i: [] for i in range(n_embeddings)}
@@ -231,7 +242,6 @@ class VQVAE(nn.Module):
         # # 第四步：加载模型参数
         # self.encoder.load_state_dict(encoder_model_dict)
 
-
         # pre_quantization_conv_model_dict = self.pre_quantization_conv.state_dict()
         # pre_quantization_conv_model_dict_new = {k.replace('vqvae.pre_quantization_conv.', ''): v for k, v in state_dict.items() if k.startswith('vqvae.pre_quantization_conv.')}
         # pre_quantization_conv_model_dict.update(pre_quantization_conv_model_dict_new)
@@ -242,56 +252,61 @@ class VQVAE(nn.Module):
         # vector_quantization_model_dict.update(vector_quantization_model_dict_new)
         # self.vector_quantization.load_state_dict(vector_quantization_model_dict)
 
-
         # decoder_model_dict = self.decoder.state_dict()
         # decoder_model_dict_new = {k.replace('vqvae.decoder.', ''): v for k, v in state_dict.items() if k.startswith('vqvae.decoder.')}
         # decoder_model_dict.update(decoder_model_dict_new)
         # self.decoder.load_state_dict(decoder_model_dict)
 
-
-
-
     def forward(self, x, verbose=False):
-        
         # from IPython import embed
         # embed(header= 'encoder')
         z_e = self.encoder(x)
 
         z_e = self.pre_quantization_conv(z_e)
-        embedding_loss, z_q, perplexity, _, _ = self.vector_quantization(
-            z_e)
+        embedding_loss, z_q, perplexity, _, _ = self.vector_quantization(z_e)
         x_hat = self.decoder(z_q)
 
         if verbose:
-            print('original data shape:', x.shape)
-            print('encoded data shape:', z_e.shape)
-            print('recon data shape:', x_hat.shape)
+            print("original data shape:", x.shape)
+            print("encoded data shape:", z_e.shape)
+            print("recon data shape:", x_hat.shape)
             assert False
 
         return embedding_loss, x_hat, perplexity
 
 
 class VQVAE_Veh(nn.Module):
-    def __init__(self, feature_channel, h_dim, res_h_dim, n_res_layers,
-                 n_embeddings, embedding_dim, beta, save_img_embedding_map=False, 
-                 load_ckpt=False, ckpt_path=None, load_dict=None):
+    def __init__(
+        self,
+        feature_channel,
+        h_dim,
+        res_h_dim,
+        n_res_layers,
+        n_embeddings,
+        embedding_dim,
+        beta,
+        save_img_embedding_map=False,
+        load_ckpt=False,
+        ckpt_path=None,
+        load_dict=None,
+    ):
         super(VQVAE_Veh, self).__init__()
         # encode image into continuous latent space
         self.encoder = Encoder(feature_channel, h_dim, n_res_layers, res_h_dim)
         self.pre_quantization_conv = nn.Conv2d(
-            h_dim, embedding_dim, kernel_size=1, stride=1)
+            h_dim, embedding_dim, kernel_size=1, stride=1
+        )
         # pass continuous latent vector through discretization bottleneck
-        self.vector_quantization = VectorQuantizer(
-            n_embeddings, embedding_dim, beta)
+        self.vector_quantization = VectorQuantizer(n_embeddings, embedding_dim, beta)
         # decode the discrete latent representation
-        self.decoder = Decoder(embedding_dim, h_dim, feature_channel, n_res_layers, res_h_dim)
+        self.decoder = Decoder(
+            embedding_dim, h_dim, feature_channel, n_res_layers, res_h_dim
+        )
 
         if save_img_embedding_map:
             self.img_to_embedding_map = {i: [] for i in range(n_embeddings)}
         else:
             self.img_to_embedding_map = None
-
-
 
         # if load_ckpt and ckpt_path is not None:
         #     if not os.path.exists(ckpt_path):
@@ -313,22 +328,19 @@ class VQVAE_Veh(nn.Module):
         #             # 第四步：加载模型参数
         #             getattr(self,load_dict[i]).load_state_dict(encoder_model_dict)
 
-
     def forward(self, x, verbose=False):
-        
         # from IPython import embed
         # embed(header= 'encoder')
         z_e = self.encoder(x)
 
         z_e = self.pre_quantization_conv(z_e)
-        embedding_loss, z_q, perplexity, _, _ = self.vector_quantization(
-            z_e)
+        embedding_loss, z_q, perplexity, _, _ = self.vector_quantization(z_e)
         x_hat = self.decoder(z_q)
 
         if verbose:
-            print('original data shape:', x.shape)
-            print('encoded data shape:', z_e.shape)
-            print('recon data shape:', x_hat.shape)
+            print("original data shape:", x.shape)
+            print("encoded data shape:", z_e.shape)
+            print("recon data shape:", x_hat.shape)
             assert False
 
         return embedding_loss, x_hat, perplexity
