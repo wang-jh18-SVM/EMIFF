@@ -51,7 +51,7 @@ class DAIR_VIC_Dataset(KittiDataset):
         veh_lidar2veh_cam = rect @ Trv2c
         inf_lidar2inf_cam = rect @ inf_Trv2c
         lidar_v2i = np.linalg.inv(Tr_lidar_i2v)
-        veh_lidar2inf_cam = lidar_v2i @ inf_lidar2inf_cam
+        veh_lidar2inf_cam = inf_lidar2inf_cam @ lidar_v2i
         # veh_lidar2world = np.linalg.inv(world2veh_lidar)
         # veh_lidar2inf_cam = rect @ inf_Trv2c @  world2inf_lidar @ veh_lidar2world
 

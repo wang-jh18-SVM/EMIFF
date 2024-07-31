@@ -5,7 +5,7 @@ CHECKPOINT=$2
 GPUS=$3
 NNODES=${NNODES:-1}
 NODE_RANK=${NODE_RANK:-0}
-PORT=${PORT:-29500}
+PORT=${PORT:-29501}
 MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
 
 PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
@@ -19,5 +19,5 @@ python -m torch.distributed.launch \
     $CONFIG \
     $CHECKPOINT \
     --launcher pytorch \
-    --out results.pkl \
+    --out work_dirs/0726_EMIFF_1920x1088_12e_bs2x4_lr2e-5/results.pkl \
     ${@:4}

@@ -183,7 +183,7 @@ data = dict(
 
 optimizer = dict(
     type="AdamW",
-    lr=0.00005,
+    lr=1e-5,
     weight_decay=0.0001,
     paramwise_cfg=dict(custom_keys=dict(backbone=dict(lr_mult=0.1, decay_mult=1.0))),
 )
@@ -193,14 +193,10 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = "0726_EMIFF_1920x1088_12e_bs2x4_lr5e-5"
+run_name = "0726_EMIFF_1920x1088_12e_bs2x4_lr1e-5"
 wandb_init_dict = dict(
     type="WandbLoggerHook",
-    # type='MMDetWandbHook',
     init_kwargs=dict(project="VIMI", name=run_name),
-    # log_checkpoint=True,
-    # log_checkpoint_metadata=True,
-    # num_eval_images=4
 )
 log_config = dict(
     interval=50,
