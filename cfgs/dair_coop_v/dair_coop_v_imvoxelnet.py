@@ -1,5 +1,5 @@
 dataset_type = "KittiDataset"
-data_root = "data/3_27_cooperative-vehicle-side-lidar/"
+data_root = "data/dair_vic_kitti_format/"
 class_names = ["Car"]
 input_modality = dict(use_lidar=False, use_camera=True)
 point_cloud_range = [0, -39.68, -3, 92.16, 39.68, 1]
@@ -11,7 +11,7 @@ output_shape = [width, length, height]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
-img_scale = (960, 540)
+img_scale = (1920, 1080)
 img_resize_scale = [(912, 513), (1008, 567)]
 
 work_dir = "./work_dirs/vic3d_latefusion_inf_imvoxelnet"
@@ -102,12 +102,13 @@ train_pipeline = [
 ]
 test_pipeline = [
     dict(type="LoadImageFromFile"),
-    dict(type="Resize", img_scale=img_scale, keep_ratio=True),
-    dict(type="Normalize", **img_norm_cfg),
-    dict(type="Pad", size_divisor=32),
+    # dict(type="Resize", img_scale=img_scale, keep_ratio=True),
+    # dict(type="Normalize", **img_norm_cfg),
+    # dict(type="Pad", size_divisor=32),
     dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
     dict(type="Collect3D", keys=["img"]),
 ]
+eval_pipeline = test_pipeline
 
 data = dict(
     samples_per_gpu=4,
@@ -118,7 +119,7 @@ data = dict(
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file=data_root + "kitti_infos_train.pkl",
+            ann_file=data_root + "dair_vic_kitti_format_infos_train.pkl",
             split="training",
             pts_prefix="velodyne_reduced",
             pipeline=train_pipeline,
@@ -130,7 +131,7 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "kitti_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
@@ -141,7 +142,7 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "kitti_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,

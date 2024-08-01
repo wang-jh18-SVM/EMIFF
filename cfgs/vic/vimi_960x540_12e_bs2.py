@@ -1,5 +1,5 @@
 dataset_type = "DAIR_VIC_Dataset"
-data_root = "data/1026_vic/"
+data_root = "data/dair_vic_kitti_format/"
 class_names = ["Car"]
 input_modality = dict(use_lidar=False, use_camera=True)
 point_cloud_range = [0, -39.68, -3, 92.16, 39.68, 1]
@@ -12,7 +12,7 @@ output_shape = [width, length, height]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
-img_scale = (960, 540)
+img_scale = (1920, 1080)
 img_resize_scale = [(912, 513), (1008, 567)]
 
 _dim_ = 64
@@ -135,6 +135,8 @@ test_pipeline = [
     dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
     dict(type="Collect3D", keys=["img", "gt_bboxes_3d", "gt_labels_3d"]),
 ]
+eval_pipeline = test_pipeline
+
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=4,
@@ -144,7 +146,7 @@ data = dict(
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file=data_root + "dair_coop1214_infos_train.pkl",
+            ann_file=data_root + "dair_vic_kitti_format_infos_train.pkl",
             split="training",
             pts_prefix="velodyne_reduced",
             pipeline=train_pipeline,
@@ -156,7 +158,7 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
@@ -167,7 +169,7 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
@@ -179,7 +181,7 @@ data = dict(
 
 optimizer = dict(
     type="AdamW",
-    lr=0.0001,
+    lr=5e-5,
     weight_decay=0.0001,
     paramwise_cfg=dict(custom_keys=dict(backbone=dict(lr_mult=0.1, decay_mult=1.0))),
 )
@@ -189,7 +191,7 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = "0523_VIMI_Reproduction_960x540_12e_bs2x1"
+run_name = f"0801_VIMI_{img_scale}_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}"
 wandb_init_dict = dict(
     type="WandbLoggerHook", init_kwargs=dict(project="VIMI", name=run_name)
 )

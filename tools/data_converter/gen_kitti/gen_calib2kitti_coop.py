@@ -170,7 +170,7 @@ def gen_lidar2cam_i(source_root, target_root, label_type="lidar"):
     write_path = os.path.join(target_root, "label", label_type)
     mkdir_p(write_path)
 
-    path = "data/DAIR-V2X/cooperative-vehicle-infrastructure"
+    path = source_root
     frame_pairs = read_json(os.path.join(path, "cooperative/data_info.json"))
     sensortype = "camera"
 
@@ -351,7 +351,7 @@ def gen_lidar2cam_v(source_root, target_root, label_type="lidar"):
     write_path = os.path.join(target_root, "label", label_type)
     mkdir_p(write_path)
 
-    path = "data/DAIR-V2X/cooperative-vehicle-infrastructure"
+    path = source_root
     frame_pairs = read_json(os.path.join(path, "cooperative/data_info.json"))
     sensortype = "camera"
 
@@ -462,7 +462,7 @@ def gen_calib2kitti_coop(source_root, target_root, label_type="lidar"):
     path_calib = os.path.join(target_root, "training/calib")
     mkdir_p(path_calib)
 
-    path = "data/DAIR-V2X/cooperative-vehicle-infrastructure"
+    path = source_root
     frame_pairs = read_json(os.path.join(path, "cooperative/data_info.json"))
     sensortype = "camera"
 
@@ -486,6 +486,8 @@ def gen_calib2kitti_coop(source_root, target_root, label_type="lidar"):
             inf_frame = inf_path2info[elem["infrastructure_pointcloud_path"]]
             veh_frame = veh_path2info[elem["vehicle_pointcloud_path"]]
         elif sensortype == "camera":
+            if elem["infrastructure_image_path"] not in inf_path2info.keys():
+                continue
             inf_frame = inf_path2info[elem["infrastructure_image_path"]]
             veh_frame = veh_path2info[elem["vehicle_image_path"]]
 

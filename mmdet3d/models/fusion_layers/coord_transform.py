@@ -82,7 +82,7 @@ def apply_3d_transformation(pcd, coord_type, img_meta, reverse=False):
         # pcd_rotate_mat @ pcd_rotate_mat.inverse() is not
         # exactly an identity matrix
         # use angle to create the inverse rot matrix neither.
-        rotate_func = partial(pcd.rotate, rotation=pcd_rotate_mat.inverse())
+        rotate_func = partial(pcd.rotate, rotation=pcd_rotate_mat.cpu().inverse().cuda())
 
         # reverse the pipeline
         flow = flow[::-1]

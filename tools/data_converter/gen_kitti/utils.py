@@ -41,6 +41,8 @@ def get_files_path(path_my_dir, extention=".json"):
 
 
 def pcd2bin(pcd_file_path, bin_file_path):
+    # print("Converting %s to %s" % (pcd_file_path, bin_file_path))
+        
     pc = pypcd.PointCloud.from_path(pcd_file_path)
 
     np_x = (np.array(pc.pc_data["x"], dtype=np.float32)).astype(np.float32)

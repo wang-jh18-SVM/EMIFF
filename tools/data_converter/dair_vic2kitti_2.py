@@ -4,18 +4,21 @@ from gen_kitti.label_coopcoord_to_cameracoord import gen_veh_lidar2veh_cam
 from gen_kitti.label_json2kitti import json2kitti, rewrite_label, label_filter
 from tools.data_converter.gen_kitti.gen_calib2kitti_coop import gen_calib2kitti_coop
 from gen_kitti.gen_ImageSets_from_split_data import gen_ImageSet_from_coop_split_data
+from tools.data_converter.gen_kitti.utils import pcd2bin
+from tqdm import tqdm
+import multiprocessing as mp
 
 parser = argparse.ArgumentParser("Generate the Kitti Format Data")
 parser.add_argument(
     "--source-root",
     type=str,
-    default="./data/DAIR_V2X/cooperative-vehicle-infrastructure",
+    default="./data/cooperative-vehicle-infrastructure",
     help="Raw data root about DAIR-V2X.",
 )
 parser.add_argument(
     "--target-root",
     type=str,
-    default="./0623_vic_coop_v",
+    default="./data/dair_vic_kitti_format",
     help="The data root where the data with kitti format is generated",
 )
 parser.add_argument(
@@ -62,17 +65,31 @@ def mdkir_kitti(target_root):
 
 def rawdata_copy(source_root, target_root):
     os.system("cp -r %s/image %s/training/image_2" % (source_root, target_root))
-    # os.system("cp -r %s/velodyne %s/training" % (source_root, target_root))
+    os.system("cp -r %s/velodyne %s/training" % (source_root, target_root))
 
 
-# def kitti_pcd2bin(target_root):
-#     pcd_dir = os.path.join(target_root, "training/velodyne")
-#     fileList = os.listdir(pcd_dir)
-#     for fileName in fileList:
-#         if ".pcd" in fileName:
-#             pcd_file_path = pcd_dir + "/" + fileName
-#             bin_file_path = pcd_dir + "/" + fileName.replace(".pcd", ".bin")
-#             pcd2bin(pcd_file_path, bin_file_path)
+def kitti_pcd2bin(target_root):
+    ### Convert Vehicle-side PCD
+    pcd_dir = os.path.join(target_root, "training/velodyne")
+    fileList = os.listdir(pcd_dir)
+    
+    for fileName in tqdm(fileList, desc="Converting Vehicle-side PCD to BIN"):
+        if ".pcd" in fileName:
+            pcd_file_path = pcd_dir + "/" + fileName
+            bin_file_path = pcd_dir + "/" + fileName.replace(".pcd", ".bin")
+            if not os.path.exists(bin_file_path):
+                pcd2bin(pcd_file_path, bin_file_path)
+    
+    ### Convert Infrastructure-side PCD
+    pcd_dir = os.path.join(target_root, "training/velodyne_inf")
+    fileList = os.listdir(pcd_dir)
+    
+    for fileName in tqdm(fileList, desc="Converting Infrastructure-side PCD to BIN"):
+        if ".pcd" in fileName:
+            pcd_file_path = pcd_dir + "/" + fileName
+            bin_file_path = pcd_dir + "/" + fileName.replace(".pcd", ".bin")
+            if not os.path.exists(bin_file_path):
+                pcd2bin(pcd_file_path, bin_file_path)
 
 
 if __name__ == "__main__":
@@ -82,38 +99,39 @@ if __name__ == "__main__":
     target_root = args.target_root
 
     print("================ Start to Copy Raw Data ================")
-    mdkir_kitti(target_root)
-    rawdata_copy(source_root, target_root)
-    # Preprocess the point cloud
-    # kitti_pcd2bin(target_root)
+    ##### use soft link instead
+    # mdkir_kitti(target_root)
+    # rawdata_copy(source_root, target_root)
+    ### Preprocess the point cloud
+    kitti_pcd2bin(target_root)
 
-    print("================ Start to Generate Label ================")
-    temp_root = args.temp_root
-    label_type = args.label_type
-    no_classmerge = args.no_classmerge
-    # os.system("mkdir -p %s" % temp_root)
-    # os.system("rm -rf %s/*" % temp_root)
+    # print("================ Start to Generate Label ================")
+    # temp_root = args.temp_root
+    # label_type = args.label_type
+    # no_classmerge = args.no_classmerge
+    # # os.system("mkdir -p %s" % temp_root)
+    # # os.system("rm -rf %s/*" % temp_root)
 
-    ## Transform LABEL from world coord into vehicle camera coord
-    gen_veh_lidar2veh_cam(source_root, temp_root, label_type=label_type)
+    # ## Transform LABEL from world coord into vehicle camera coord
+    # gen_veh_lidar2veh_cam(source_root, temp_root, label_type=label_type)
 
-    json_root = os.path.join(temp_root, "label", label_type)
-    kitti_label_root = os.path.join(target_root, "training/label_2")
-    json2kitti(json_root, kitti_label_root)
-    if not no_classmerge:
-        rewrite_label(kitti_label_root)
-    label_filter(kitti_label_root)
+    # json_root = os.path.join(temp_root, "label", label_type)
+    # kitti_label_root = os.path.join(target_root, "training/label_2")
+    # json2kitti(json_root, kitti_label_root)
+    # if not no_classmerge:
+    #     rewrite_label(kitti_label_root)
+    # label_filter(kitti_label_root)
 
-    os.system("rm -rf %s" % temp_root)
+    # os.system("rm -rf %s" % temp_root)
 
-    print("================ Start to Generate Calibration Files ================")
-    sensor_view = args.sensor_view
+    # print("================ Start to Generate Calibration Files ================")
+    # sensor_view = args.sensor_view
 
-    # Obtain CALIB from both Vehicle and Infrastructure side
-    gen_calib2kitti_coop(source_root, target_root, label_type=label_type)
+    # ## Obtain CALIB from both Vehicle and Infrastructure side
+    # gen_calib2kitti_coop(source_root, target_root, label_type=label_type)
 
-    print("================ Start to Generate ImageSet Files ================")
-    split_json_path = args.split_path
-    ImageSets_path = os.path.join(target_root, "ImageSets")
-    # gen_ImageSet_from_split_data(ImageSets_path, split_json_path, sensor_view)
-    gen_ImageSet_from_coop_split_data(ImageSets_path, split_json_path, sensor_view)
+    # print("================ Start to Generate ImageSet Files ================")
+    # split_json_path = args.split_path
+    # ImageSets_path = os.path.join(target_root, "ImageSets")
+    # # gen_ImageSet_from_split_data(ImageSets_path, split_json_path, sensor_view)
+    # gen_ImageSet_from_coop_split_data(ImageSets_path, split_json_path, sensor_view)

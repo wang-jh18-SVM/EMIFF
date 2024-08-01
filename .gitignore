@@ -139,3 +139,4 @@ wandb
 *tar
 *tar.gz
 artifacts
+tmp_file
