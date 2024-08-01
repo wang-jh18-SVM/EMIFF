@@ -12,8 +12,10 @@ output_shape = [width, length, height]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
-img_scale = (1920, 1080)
+img_scale = (960, 540)
 img_resize_scale = [(912, 513), (1008, 567)]
+# img_scale = (1920, 1080)
+# img_resize_scale = [(1824, 1026), (2016, 1134)]
 
 _dim_ = 64
 model = dict(
@@ -135,7 +137,21 @@ test_pipeline = [
     dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
     dict(type="Collect3D", keys=["img", "gt_bboxes_3d", "gt_labels_3d"]),
 ]
-eval_pipeline = test_pipeline
+
+eval_pipeline = [
+    dict(type="LoadAnnotations3D"),
+    dict(
+        type="MultiViewPipeline_Test",
+        n_images=2,
+        transforms=[
+            dict(type="LoadImageFromFile"),
+            dict(type="Resize", img_scale=(1920, 1080), keep_ratio=True),
+        ],
+    ),
+    dict(type="ObjectRangeFilter", point_cloud_range=extended_range),
+    dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
+    dict(type="Collect3D", keys=["img", "gt_bboxes_3d", "gt_labels_3d"]),
+]
 
 data = dict(
     samples_per_gpu=2,
@@ -191,7 +207,7 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = f"0801_VIMI_{img_scale}_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}"
+run_name = f"0801_VIMI_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}"
 wandb_init_dict = dict(
     type="WandbLoggerHook", init_kwargs=dict(project="VIMI", name=run_name)
 )

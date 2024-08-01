@@ -8,6 +8,7 @@ NODE_RANK=${NODE_RANK:-0}
 PORT=${PORT:-29500}
 MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
 
+CUDA_VISIBLE_DEVICES=4,5,6,7 \
 PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
 python -m torch.distributed.launch \
     --nnodes=$NNODES \
@@ -19,4 +20,5 @@ python -m torch.distributed.launch \
     $CONFIG \
     $CHECKPOINT \
     --launcher pytorch \
+    --out work_dirs/0801_VIC_results.pkl
     ${@:4}
