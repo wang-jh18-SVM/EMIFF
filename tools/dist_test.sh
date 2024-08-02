@@ -8,6 +8,7 @@ NODE_RANK=${NODE_RANK:-0}
 PORT=${PORT:-29501}
 MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
 
+CUDA_VISIBLE_DEVICES=4,5,6,7 \
 PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
 python -m torch.distributed.launch \
     --nnodes=$NNODES \
@@ -19,5 +20,5 @@ python -m torch.distributed.launch \
     $CONFIG \
     $CHECKPOINT \
     --launcher pytorch \
-    --out work_dirs/0726_EMIFF_1920x1088_12e_bs2x4_lr2e-5/results.pkl \
+    --out work_dirs/0802_EMIFF_1920x1080_12e_bs2x4_lr2e-05/results.pkl \
     ${@:4}

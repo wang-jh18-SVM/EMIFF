@@ -12,10 +12,10 @@ output_shape = [width, length, height]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
-# img_scale = (1920, 1080)
-# img_resize_scale = [(1824, 1026), (1008, 1134)]
-img_scale = (960, 540)
-img_resize_scale = [(912, 513), (1008, 567)]
+img_scale = (1920, 1080)
+img_resize_scale = [(1824, 1026), (1008, 1134)]
+# img_scale = (960, 540)
+# img_resize_scale = [(912, 513), (1008, 567)]
 
 _dim_ = 64
 model = dict(
@@ -138,6 +138,7 @@ test_pipeline = [
     dict(type="Collect3D", keys=["img", "gt_bboxes_3d", "gt_labels_3d"]),
 ]
 
+# only for result visualization
 eval_pipeline = [
     dict(type="LoadAnnotations3D"),
     dict(
@@ -154,7 +155,7 @@ eval_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=2,
+    samples_per_gpu=1,
     workers_per_gpu=4,
     train=dict(
         type="RepeatDataset",
@@ -177,7 +178,7 @@ data = dict(
         ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
-        pipeline=eval_pipeline,
+        pipeline=test_pipeline,
         modality=input_modality,
         classes=class_names,
         test_mode=True,
@@ -197,7 +198,7 @@ data = dict(
 
 optimizer = dict(
     type="AdamW",
-    lr=2e-5,
+    lr=1e-5,
     weight_decay=0.0001,
     paramwise_cfg=dict(custom_keys=dict(backbone=dict(lr_mult=0.1, decay_mult=1.0))),
 )
@@ -207,7 +208,7 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = f"0801_EMIFF_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}"
+run_name = f"0802_EMIFF_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}"
 wandb_init_dict = dict(
     type="WandbLoggerHook",
     init_kwargs=dict(project="VIMI", name=run_name),
