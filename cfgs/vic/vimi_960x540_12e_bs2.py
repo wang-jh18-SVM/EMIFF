@@ -13,7 +13,7 @@ img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
 img_scale = (1920, 1080)
-img_resize_scale = [(1824, 1026), (1008, 1134)]
+img_resize_scale = [(1824, 1026), (2016, 1134)]
 # img_scale = (960, 540)
 # img_resize_scale = [(912, 513), (1008, 567)]
 
