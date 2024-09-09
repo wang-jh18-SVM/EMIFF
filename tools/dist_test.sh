@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-CONFIG=$1
-CHECKPOINT=$2
-GPUS=$3
+CONFIG=cfgs/vic/vimi_960x540_12e_bs2_lidar.py
+CHECKPOINT=work_dirs/0907_EMIFF_960x540_12e_bs1x4_lr3e-05/epoch_1.pth
+GPUS=4
 NNODES=${NNODES:-1}
 NODE_RANK=${NODE_RANK:-0}
 PORT=${PORT:-29501}
@@ -20,5 +20,6 @@ python -m torch.distributed.launch \
     $CONFIG \
     $CHECKPOINT \
     --launcher pytorch \
-    --out work_dirs/0802_EMIFF_1920x1080_12e_bs2x4_lr2e-05/results.pkl \
+    --out work_dirs/0907_EMIFF_960x540_12e_bs1x4_lr3e-05/results.pkl \
+    --show-dir ./show_dir/0907_EMIFF_960x540_12e_bs1x4_lr3e-05/
     ${@:4}

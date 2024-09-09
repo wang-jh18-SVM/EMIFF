@@ -13,7 +13,7 @@ from .vicfuser_voxel_ms_ccm import VICFuser_Voxel_MS_CCM
 from .vicfuser_bev_msca_c_ccm import VICFuser_BEV_MSCA_C_CCM
 from .vimi_vqvae import VIMI_VQVAE
 from .vimi_vqvae_veh import VIMI_VQVAE_Veh
-from .vimi import VIMI
+from .vimi import VIMI, VIMI_Fusion
 
 # from .archive_code.vicfuser_voxel_cat import VICFuser_Voxel_Cat
 # from .archive_code.vicfuser_bev import VICFuser_BEV
@@ -44,4 +44,5 @@ __all__ = [
     "VIMI_VQVAE",
     "VIMI",
     "VIMI_VQVAE_Veh",
+    "VIMI_Fusion",
 ]

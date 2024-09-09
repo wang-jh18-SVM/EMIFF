@@ -1,5 +1,5 @@
 dataset_type = "DAIR_VIC_Dataset"
-data_root = "data/dair_vic_kitti_format/"
+data_root = "data/V2X-Seq-SPD-KITTI-CO/"
 class_names = ["Car"]
 input_modality = dict(use_lidar=False, use_camera=True)
 point_cloud_range = [0, -39.68, -3, 92.16, 39.68, 1]
@@ -12,8 +12,10 @@ output_shape = [width, length, height]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
-img_scale = (960, 540)
-img_resize_scale = [(912, 513), (1008, 567)]
+img_scale = (1920, 1080)
+img_resize_scale = [(1824, 1026), (2016, 1134)]
+# img_scale = (960, 540)
+# img_resize_scale = [(912, 513), (1008, 567)]
 
 _dim_ = 64
 model = dict(
@@ -153,7 +155,7 @@ eval_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=2,
+    samples_per_gpu=1,
     workers_per_gpu=4,
     train=dict(
         type="RepeatDataset",
@@ -161,7 +163,7 @@ data = dict(
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file=data_root + "dair_coop1214_infos_train.pkl",
+            ann_file=data_root + "dair_vic_kitti_format_infos_train.pkl",
             split="training",
             pts_prefix="velodyne_reduced",
             pipeline=train_pipeline,
@@ -173,7 +175,7 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
@@ -184,7 +186,7 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
@@ -196,7 +198,7 @@ data = dict(
 
 optimizer = dict(
     type="AdamW",
-    lr=1e-4,
+    lr=1e-5,
     weight_decay=0.0001,
     paramwise_cfg=dict(custom_keys=dict(backbone=dict(lr_mult=0.1, decay_mult=1.0))),
 )
@@ -206,7 +208,7 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = f"0908_EMIFF_coop1214_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x1_lr{optimizer['lr']}"
+run_name = f"0802_EMIFF_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}"
 wandb_init_dict = dict(
     type="WandbLoggerHook",
     init_kwargs=dict(project="VIMI", name=run_name),

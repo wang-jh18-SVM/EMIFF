@@ -15,45 +15,58 @@ import mmcv
 import json
 from mmdet3d.datasets.pipelines.transforms_3d import ObjectRangeFilter
 
-t_noise_range = 0.0
+# t_noise_range = 0.0
 
 
 @DATASETS.register_module()
 class DAIR_VIC_Dataset(KittiDataset):
+    def __my_read_json(self, path_json):
+        with open(path_json, "r") as load_f:
+            my_json = json.load(load_f)
+        return my_json
+
     def get_data_info(self, index):
         # from IPython import embed
         # embed(header='DAIR_VIC_Dataset.get_data_info')
-
         info = self.data_infos[index]
         sample_idx = info["image"]["image_idx"]
+        # sample_veh_idx = info["image"]["image_idx"]
+        # sample_inf_idx = info["image"]["inf_image_idx"]
         img_2_filename = os.path.join(self.data_root, info["image"]["image_path"])
         img_3_filename = os.path.join(self.data_root, info["image"]["inf_image_path"])
+        veh_pts_filename = os.path.join(
+            self.data_root, info["point_cloud"]["velodyne_path"]
+        )
+        inf_pts_filename = os.path.join(
+            self.data_root, info["point_cloud"]["inf_velodyne_path"]
+        )
         assert img_2_filename != img_3_filename
 
         rect = info["calib"]["R0_rect"].astype(np.float32)
         Trv2c = info["calib"]["Tr_velo_to_cam"].astype(np.float32)
         inf_Trv2c = info["calib"]["inf_Tr_velo_to_cam"].astype(np.float32)
-        Tr_lidar_i2v = info["calib"]["Tr_lidar_i2v"].astype(np.float32)
-        # world2veh_lidar = info['calib']['world2veh_lidar'].astype(np.float32)
-        # world2inf_lidar = info['calib']['world2inf_lidar'].astype(np.float32)
+        # Tr_lidar_i2v = info["calib"]["Tr_lidar_i2v"].astype(np.float32)
+        world2veh_lidar = info["calib"]["world2veh_lidar"].astype(np.float32)
+        world2inf_lidar = info["calib"]["world2inf_lidar"].astype(np.float32)
         P2 = info["calib"]["P2"].astype(np.float32)
         P3 = info["calib"]["P3"].astype(np.float32)
 
-        # from IPython import embed
-        # embed(header='noise')
         # print(t_noise_range)
-        t_noise = (
-            np.array([np.random.normal(0, 1 / 3), np.random.normal(0, 1 / 3), 0.0])
-            * t_noise_range
-        )
-        Tr_lidar_i2v = self.trans_noise(Tr_lidar_i2v, t_noise)
+        # t_noise = (
+        #     np.array([np.random.normal(0, 1 / 3), np.random.normal(0, 1 / 3), 0.0])
+        #     * t_noise_range
+        # )
+        # Tr_lidar_i2v = self.trans_noise(Tr_lidar_i2v, t_noise)
 
         veh_lidar2veh_cam = rect @ Trv2c
-        inf_lidar2inf_cam = rect @ inf_Trv2c
-        lidar_v2i = np.linalg.inv(Tr_lidar_i2v)
-        veh_lidar2inf_cam = inf_lidar2inf_cam @ lidar_v2i
-        # veh_lidar2world = np.linalg.inv(world2veh_lidar)
-        # veh_lidar2inf_cam = rect @ inf_Trv2c @  world2inf_lidar @ veh_lidar2world
+
+        # inf_lidar2inf_cam = rect @ inf_Trv2c
+        # lidar_v2i = np.linalg.inv(Tr_lidar_i2v)
+        # veh_lidar2inf_cam = inf_lidar2inf_cam @ lidar_v2i
+        veh_lidar2world = np.linalg.inv(world2veh_lidar)
+        veh_lidar2inf_cam = rect @ inf_Trv2c @ world2inf_lidar @ veh_lidar2world
+
+        lidar_i2v = np.linalg.inv(world2inf_lidar @ veh_lidar2world)
 
         veh_intrinsic = np.copy(P2)
         inf_intrinsic = np.copy(P3)
@@ -61,20 +74,21 @@ class DAIR_VIC_Dataset(KittiDataset):
 
         input_dict = dict(
             sample_idx=sample_idx,
+            infrastructure_pts_filename=inf_pts_filename,
+            vehicle_pts_filename=veh_pts_filename,
             img_prefix=[None, None],
             img_info=[dict(filename=img_2_filename), dict(filename=img_3_filename)],
             lidar2img=dict(
                 extrinsic=[veh_lidar2veh_cam, veh_lidar2inf_cam],
                 intrinsic=[veh_intrinsic, inf_intrinsic],
             ),
+            lidar_i2v=lidar_i2v,
         )
 
+        # if not self.test_mode:
         annos = self.get_ann_info(index)
         input_dict["ann_info"] = annos
 
-        # if not self.test_mode:
-        #     annos = self.get_ann_info(index)
-        #     input_dict['ann_info'] = annos
         return input_dict
 
     def trans_noise(self, world2inf_lidar, t_noise):
@@ -163,15 +177,15 @@ class DAIR_VIC_Dataset(KittiDataset):
             # from IPython import embed
             # embed(header='gt_bboxes')
 
-            assert isinstance(pipeline.transforms[2], ObjectRangeFilter)
+            assert isinstance(pipeline.transforms[5], ObjectRangeFilter)
             anno = self.get_ann_info(i)
-            anno_f = pipeline.transforms[2](anno)
+            anno_f = pipeline.transforms[5](anno)
             gt_bboxes = anno_f["gt_bboxes_3d"].tensor.numpy()
 
             pred = dict()
             pred["gt_bboxes_3d"] = result["boxes_3d"]
             pred["gt_labels_3d"] = result["labels_3d"]
-            pred_f = pipeline.transforms[2](pred)
+            pred_f = pipeline.transforms[5](pred)
             pred_bboxes = pred_f["gt_bboxes_3d"].tensor.numpy()
             # pred_bboxes = result['boxes_3d'].tensor.numpy()
 

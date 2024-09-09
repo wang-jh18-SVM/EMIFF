@@ -245,7 +245,7 @@ def get_kitti_image_info(
         pc_info = {"num_features": 4}
         calib_info = {}
 
-        image_info = {"image_idx": idx}
+        image_info = {"image_idx": idx, "inf_image_idx": inf_idx}
         annotations = None
         if velodyne:
             pc_info["velodyne_path"] = get_velodyne_path(

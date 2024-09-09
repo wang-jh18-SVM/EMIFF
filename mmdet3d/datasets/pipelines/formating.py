@@ -239,6 +239,12 @@ class DefaultFormatBundle3D(DefaultFormatBundle):
             assert isinstance(results["points"], BasePoints)
             results["points"] = DC(results["points"].tensor)
 
+        if "infrastructure_points" in results:
+            assert isinstance(results["infrastructure_points"], BasePoints)
+            results["infrastructure_points"] = DC(
+                results["infrastructure_points"].tensor
+            )
+
         for key in ["voxels", "coors", "voxel_centers", "num_points"]:
             if key not in results:
                 continue
@@ -284,10 +290,6 @@ class DefaultFormatBundle3D(DefaultFormatBundle):
                         [self.class_names.index(n) for n in results["gt_names_3d"]],
                         dtype=np.int64,
                     )
-
-        # from IPython import embed
-        # embed(header='DefaultFormatBundle3D.__call__')
-
         results = super(DefaultFormatBundle3D, self).__call__(results)
         return results
 

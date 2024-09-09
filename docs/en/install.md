@@ -39,6 +39,6 @@ git clone https://github.com/Bosszhe/EMIFF.git
 
 **f. Install mmdet3d from source code.**
 ```shell
-pip install -e . 
+pip install -v -e . 
 ```
 

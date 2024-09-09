@@ -385,6 +385,7 @@ class LoadPointsFromFile(object):
         shift_height=False,
         use_color=False,
         file_client_args=dict(backend="disk"),
+        sensor_view=None,
     ):
         self.shift_height = shift_height
         self.use_color = use_color
@@ -400,6 +401,8 @@ class LoadPointsFromFile(object):
         self.use_dim = use_dim
         self.file_client_args = file_client_args.copy()
         self.file_client = None
+
+        self.sensor_view = sensor_view
 
     def _load_points(self, pts_filename):
         """Private function to load point clouds data.
@@ -436,7 +439,10 @@ class LoadPointsFromFile(object):
 
                 - points (:obj:`BasePoints`): Point clouds data.
         """
-        pts_filename = results["pts_filename"]
+        if self.sensor_view is not None:
+            pts_filename = results[self.sensor_view + "_pts_filename"]
+        else:
+            pts_filename = results["pts_filename"]
         points = self._load_points(pts_filename)
         points = points.reshape(-1, self.load_dim)
         points = points[:, self.use_dim]
@@ -468,7 +474,10 @@ class LoadPointsFromFile(object):
         points = points_class(
             points, points_dim=points.shape[-1], attribute_dims=attribute_dims
         )
-        results["points"] = points
+        if self.sensor_view is "infrastructure":
+            results[self.sensor_view + "_points"] = points
+        else:
+            results["points"] = points
 
         return results
 
@@ -672,8 +681,6 @@ class LoadAnnotations3D(LoadAnnotations):
             dict: The dict containing loaded 3D bounding box, label, mask and
                 semantic segmentation annotations.
         """
-        # from IPython import embed
-        # embed(header='LoadAnnotations3D.__call__')
         results = super().__call__(results)
         if self.with_bbox_3d:
             results = self._load_bboxes_3d(results)

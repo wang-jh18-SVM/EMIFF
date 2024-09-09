@@ -1,14 +1,20 @@
 dataset_type = "DAIR_VIC_Dataset"
 data_root = "data/dair_vic_kitti_format/"
 class_names = ["Car"]
-input_modality = dict(use_lidar=False, use_camera=True)
+input_modality = dict(use_lidar=True, use_camera=True)
 point_cloud_range = [0, -39.68, -3, 92.16, 39.68, 1]
 extended_range = [0, -40.0, -3, 100, 40.0, 1]
-voxel_size = [0.32, 0.32, 0.33]
-length = int((point_cloud_range[3] - point_cloud_range[0]) / voxel_size[0])
-width = int((point_cloud_range[4] - point_cloud_range[1]) / voxel_size[1])
-height = int((point_cloud_range[5] - point_cloud_range[2]) / voxel_size[2])
-output_shape = [width, length, height]
+img_voxel_size = [0.32, 0.32, 0.33]
+length = int((point_cloud_range[3] - point_cloud_range[0]) / img_voxel_size[0])
+width = int((point_cloud_range[4] - point_cloud_range[1]) / img_voxel_size[1])
+height = int((point_cloud_range[5] - point_cloud_range[2]) / img_voxel_size[2])
+img_output_shape = [width, length, height]
+
+pts_voxel_size = [0.16, 0.16, 4]
+l = int((point_cloud_range[3] - point_cloud_range[0]) / pts_voxel_size[0])
+h = int((point_cloud_range[4] - point_cloud_range[1]) / pts_voxel_size[1])
+pts_output_shape = [h, l]
+
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
@@ -17,8 +23,8 @@ img_resize_scale = [(912, 513), (1008, 567)]
 
 _dim_ = 64
 model = dict(
-    type="VIMI",
-    backbone=dict(
+    type="VIMI_Fusion",
+    img_backbone=dict(
         type="ResNet",
         depth=50,
         num_stages=4,
@@ -29,10 +35,10 @@ model = dict(
         init_cfg=dict(type="Pretrained", checkpoint="torchvision://resnet50"),
         style="pytorch",
     ),
-    neck=dict(
+    img_neck=dict(
         type="FPN", in_channels=[256, 512, 1024, 2048], out_channels=_dim_, num_outs=4
     ),
-    neck_dcn=dict(
+    img_neck_dcn=dict(
         type="DeformConv",
         chi=_dim_,
         cho=_dim_,
@@ -42,7 +48,37 @@ model = dict(
         dilation=1,
         deform_groups=1,
     ),
-    neck_3d=dict(type="OutdoorImVoxelNeck", in_channels=_dim_, out_channels=256),
+    img_neck_3d=dict(type="OutdoorImVoxelNeck", in_channels=_dim_, out_channels=256),
+    pts_voxel_layer=dict(
+        max_num_points=100,
+        point_cloud_range=point_cloud_range,
+        voxel_size=pts_voxel_size,
+        max_voxels=(40000, 40000),
+    ),
+    pts_voxel_encoder=dict(
+        type="PillarFeatureNet",
+        in_channels=4,
+        feat_channels=[64],
+        with_distance=False,
+        voxel_size=pts_voxel_size,
+        point_cloud_range=point_cloud_range,
+    ),
+    pts_middle_encoder=dict(
+        type="PointPillarsScatter", in_channels=64, output_shape=pts_output_shape
+    ),
+    pts_backbone=dict(
+        type="SECOND",
+        in_channels=64,
+        layer_nums=[3, 5, 5],
+        layer_strides=[2, 2, 2],
+        out_channels=[64, 128, 256],
+    ),
+    pts_neck=dict(
+        type="SECONDFPN",
+        in_channels=[64, 128, 256],
+        upsample_strides=[1, 2, 4],
+        out_channels=[128, 128, 128],
+    ),
     bbox_head=dict(
         type="Anchor3DHead",
         num_classes=1,
@@ -64,7 +100,7 @@ model = dict(
         loss_bbox=dict(type="SmoothL1Loss", beta=1.0 / 9.0, loss_weight=2.0),
         loss_dir=dict(type="CrossEntropyLoss", use_sigmoid=False, loss_weight=0.2),
     ),
-    n_voxels=output_shape,
+    n_voxels=img_output_shape,
     compress_ratio=64,
     s_compress_ratio=1,
     se_reduction_ratio=1,
@@ -98,6 +134,20 @@ model = dict(
 )
 
 train_pipeline = [
+    dict(
+        type="LoadPointsFromFile",
+        coord_type="LIDAR",
+        load_dim=4,
+        use_dim=4,
+        sensor_view="vehicle",
+    ),
+    dict(
+        type="LoadPointsFromFile",
+        coord_type="LIDAR",
+        load_dim=4,
+        use_dim=4,
+        sensor_view="infrastructure",
+    ),
     dict(type="LoadAnnotations3D"),
     dict(
         type="MultiViewPipeline",
@@ -115,11 +165,46 @@ train_pipeline = [
             dict(type="Pad", size_divisor=32),
         ],
     ),
+    dict(type="PointsRangeFilter", point_cloud_range=point_cloud_range),
     dict(type="ObjectRangeFilter", point_cloud_range=point_cloud_range),
     dict(type="DefaultFormatBundle3D", class_names=class_names),
-    dict(type="Collect3D", keys=["img", "gt_bboxes_3d", "gt_labels_3d"]),
+    dict(
+        type="Collect3D",
+        keys=["img", "points", "infrastructure_points", "gt_bboxes_3d", "gt_labels_3d"],
+        meta_keys=(
+            "filename",
+            "ori_shape",
+            "img_shape",
+            "lidar2img",
+            "pad_shape",
+            "scale_factor",
+            "flip",
+            "pcd_horizontal_flip",
+            "pcd_vertical_flip",
+            "box_mode_3d",
+            "box_type_3d",
+            "img_norm_cfg",
+            "sample_idx",
+            "transformation_3d_flow",
+            "lidar_i2v",
+        ),
+    ),
 ]
 test_pipeline = [
+    dict(
+        type="LoadPointsFromFile",
+        coord_type="LIDAR",
+        load_dim=4,
+        use_dim=4,
+        sensor_view="vehicle",
+    ),
+    dict(
+        type="LoadPointsFromFile",
+        coord_type="LIDAR",
+        load_dim=4,
+        use_dim=4,
+        sensor_view="infrastructure",
+    ),
     dict(type="LoadAnnotations3D"),
     dict(
         type="MultiViewPipeline_Test",
@@ -131,13 +216,48 @@ test_pipeline = [
             dict(type="Pad", size_divisor=32),
         ],
     ),
-    dict(type="ObjectRangeFilter", point_cloud_range=extended_range),
-    dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
-    dict(type="Collect3D", keys=["img", "gt_bboxes_3d", "gt_labels_3d"]),
+    dict(type="PointsRangeFilter", point_cloud_range=point_cloud_range),
+    dict(type="ObjectRangeFilter", point_cloud_range=point_cloud_range),
+    dict(type="DefaultFormatBundle3D", class_names=class_names),
+    dict(
+        type="Collect3D",
+        keys=["img", "points", "infrastructure_points", "gt_bboxes_3d", "gt_labels_3d"],
+        meta_keys=(
+            "filename",
+            "ori_shape",
+            "img_shape",
+            "lidar2img",
+            "pad_shape",
+            "scale_factor",
+            "flip",
+            "pcd_horizontal_flip",
+            "pcd_vertical_flip",
+            "box_mode_3d",
+            "box_type_3d",
+            "img_norm_cfg",
+            "sample_idx",
+            "transformation_3d_flow",
+            "lidar_i2v",
+        ),
+    ),
 ]
 
 # only for result visualization
 eval_pipeline = [
+    dict(
+        type="LoadPointsFromFile",
+        coord_type="LIDAR",
+        load_dim=4,
+        use_dim=4,
+        sensor_view="vehicle",
+    ),
+    dict(
+        type="LoadPointsFromFile",
+        coord_type="LIDAR",
+        load_dim=4,
+        use_dim=4,
+        sensor_view="infrastructure",
+    ),
     dict(type="LoadAnnotations3D"),
     dict(
         type="MultiViewPipeline_Test",
@@ -147,13 +267,34 @@ eval_pipeline = [
             dict(type="Resize", img_scale=(1920, 1080), keep_ratio=True),
         ],
     ),
-    dict(type="ObjectRangeFilter", point_cloud_range=extended_range),
-    dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
-    dict(type="Collect3D", keys=["img", "gt_bboxes_3d", "gt_labels_3d"]),
+    dict(type="PointsRangeFilter", point_cloud_range=point_cloud_range),
+    dict(type="ObjectRangeFilter", point_cloud_range=point_cloud_range),
+    dict(type="DefaultFormatBundle3D", class_names=class_names),
+    dict(
+        type="Collect3D",
+        keys=["img", "points", "infrastructure_points", "gt_bboxes_3d", "gt_labels_3d"],
+        meta_keys=(
+            "filename",
+            "ori_shape",
+            "img_shape",
+            "lidar2img",
+            "pad_shape",
+            "scale_factor",
+            "flip",
+            "pcd_horizontal_flip",
+            "pcd_vertical_flip",
+            "box_mode_3d",
+            "box_type_3d",
+            "img_norm_cfg",
+            "sample_idx",
+            "transformation_3d_flow",
+            "lidar_i2v",
+        ),
+    ),
 ]
 
 data = dict(
-    samples_per_gpu=2,
+    samples_per_gpu=1,
     workers_per_gpu=4,
     train=dict(
         type="RepeatDataset",
@@ -161,36 +302,42 @@ data = dict(
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file=data_root + "dair_coop1214_infos_train.pkl",
+            ann_file=data_root + "dair_vic_kitti_format_infos_train.pkl",
             split="training",
             pts_prefix="velodyne_reduced",
             pipeline=train_pipeline,
             modality=input_modality,
             classes=class_names,
             test_mode=False,
+            pcd_limit_range=point_cloud_range,
+            box_type_3d="LiDAR",
         ),
     ),
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
         modality=input_modality,
         classes=class_names,
         test_mode=True,
+        pcd_limit_range=point_cloud_range,
+        box_type_3d="LiDAR",
     ),
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
         modality=input_modality,
         classes=class_names,
         test_mode=True,
+        pcd_limit_range=point_cloud_range,
+        box_type_3d="LiDAR",
     ),
 )
 
@@ -206,7 +353,7 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = f"0908_EMIFF_coop1214_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x1_lr{optimizer['lr']}"
+run_name = f"0908_EMIFF_Fusion_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x2_lr{optimizer['lr']}"
 wandb_init_dict = dict(
     type="WandbLoggerHook",
     init_kwargs=dict(project="VIMI", name=run_name),
