@@ -176,9 +176,9 @@ def main():
     if args.gpus is None and args.gpu_ids is None:
         cfg.gpu_ids = [args.gpu_id]
 
-    if args.autoscale_lr:
-        # apply the linear scaling rule (https://arxiv.org/abs/1706.02677)
-        cfg.optimizer["lr"] = cfg.optimizer["lr"] * len(cfg.gpu_ids) / 8
+    # if args.autoscale_lr:
+    #     # apply the linear scaling rule (https://arxiv.org/abs/1706.02677)
+    #     cfg.optimizer["lr"] = cfg.optimizer["lr"] * len(cfg.gpu_ids) / 8
 
     # init distributed env first, since logger depends on the dist info.
     if args.launcher == "none":

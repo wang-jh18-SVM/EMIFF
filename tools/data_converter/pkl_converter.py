@@ -52,9 +52,11 @@ def process_and_save_data(data_1214, data_c, dataset_name):
         if d["image"]["image_idx"] not in data_c_idx_set:
             print(f"Deleting - Image idx: {d['image']['image_idx']}")
             print(
-                f"Image path: {d['image']['image_path']}, " # exists: {Path(os.path.join(DATA_ROOT,Path(d['image']['image_path']))).exists()},
+                f"Image path: {d['image']['image_path']}, "  # exists: {Path(os.path.join(DATA_ROOT,Path(d['image']['image_path']))).exists()},
             )
-            print(f"Inf Image: {d['image']['inf_image_path']}, ") # path exists: {Path(os.path.join(DATA_ROOT,Path(d['image']['inf_image_path']))).exists()}, 
+            print(
+                f"Inf Image: {d['image']['inf_image_path']}, "
+            )  # path exists: {Path(os.path.join(DATA_ROOT,Path(d['image']['inf_image_path']))).exists()},
             print()
             deleted_count += 1
         else:
@@ -75,7 +77,9 @@ def process_and_save_data(data_1214, data_c, dataset_name):
 updated_data = {}
 for dataset in ["trainval", "train", "val"]:
     print(f"\n{dataset.capitalize()} Set:")
-    print(f"Original: {len(data['1214'][dataset])}, Reference: {len(data['c'][dataset])}")
+    print(
+        f"Original: {len(data['1214'][dataset])}, Reference: {len(data['c'][dataset])}"
+    )
     print()
     updated_data[dataset] = process_and_save_data(
         data["1214"][dataset], data["c"][dataset], dataset.capitalize()

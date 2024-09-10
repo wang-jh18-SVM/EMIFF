@@ -78,6 +78,7 @@ class DAIR_VIC_Dataset(KittiDataset):
             vehicle_pts_filename=veh_pts_filename,
             img_prefix=[None, None],
             img_info=[dict(filename=img_2_filename), dict(filename=img_3_filename)],
+            pts_info=[dict(filename=veh_pts_filename), dict(filename=inf_pts_filename)],
             lidar2img=dict(
                 extrinsic=[veh_lidar2veh_cam, veh_lidar2inf_cam],
                 intrinsic=[veh_intrinsic, inf_intrinsic],

@@ -381,6 +381,7 @@ class VIMI(BaseDetector):
 
         # x [bs,C, X, Y, Z] [2,64,248,288,12]
         x = self.neck_3d(x)
+        # x [[2,256,288,248]*1]
         return x
 
     def forward_train(self, img, img_metas, gt_bboxes_3d, gt_labels_3d, **kwargs):
@@ -704,6 +705,14 @@ class VIMI_Fusion(VIMI):
             calib_inf2veh_rotation = lidar_i2v_rot
             calib_inf2veh_translation = lidar_i2v_trans
             inf_pointcloud_range = self.inf_voxel_layer.point_cloud_range
+            
+            # img_path = img_metas[ii]["img_info"]
+            # pts_path = img_metas[ii]["pts_info"]
+            # print("img_path: ", img_path)
+            # print("pts_path: ", pts_path)
+            # print("calib_inf2veh_rotation: ", calib_inf2veh_rotation)
+            # print("calib_inf2veh_translation: ", calib_inf2veh_translation)
+
 
             theta_rot = (
                 torch.tensor(
@@ -815,7 +824,7 @@ class VIMI_Fusion(VIMI):
         )  # [[2, 256, 288, 248]*1]
 
         feat_fused = torch.cat(
-            [img_feat_fused[0], pts_feat_fused[0].permute(0, 1, 3, 2)], dim=1
+            [img_feat_fused[0], pts_feat_fused[0].transpose(-1, -2)], dim=1
         )  # [2, 640, 288, 248]
         feat_fused = self.mod_fusion_weighted(feat_fused)
 
