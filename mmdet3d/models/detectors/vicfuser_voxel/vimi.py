@@ -573,7 +573,7 @@ class VIMI_Fusion(VIMI):
         self.pts_fusion_weighted = PixelWeightedFusion(768, 384)
         self.pts_encoder = ReduceInfTC(768)
 
-        self.mod_fusion_weighted = PixelWeightedFusion(640, 256)
+        self.mod_fusion_weighted = PixelWeightedFusion(640, 384)
 
     def extract_img_feat_vimi(self, img, img_metas):
         return super().extract_feat(img, img_metas)
@@ -705,14 +705,13 @@ class VIMI_Fusion(VIMI):
             calib_inf2veh_rotation = lidar_i2v_rot
             calib_inf2veh_translation = lidar_i2v_trans
             inf_pointcloud_range = self.inf_voxel_layer.point_cloud_range
-            
+
             # img_path = img_metas[ii]["img_info"]
             # pts_path = img_metas[ii]["pts_info"]
             # print("img_path: ", img_path)
             # print("pts_path: ", pts_path)
             # print("calib_inf2veh_rotation: ", calib_inf2veh_rotation)
             # print("calib_inf2veh_translation: ", calib_inf2veh_translation)
-
 
             theta_rot = (
                 torch.tensor(
@@ -779,6 +778,34 @@ class VIMI_Fusion(VIMI):
 
         return veh_cat_feats
 
+    def get_fused_img_pts_feat(self, img, img_metas, points, infrastructure_points):
+        for ii in range(len(infrastructure_points)):
+            infrastructure_points[ii][:, 3] = 255 * infrastructure_points[ii][:, 3]
+
+        pts_feat_veh = self.extract_pts_feat(
+            points, img_metas, points_view="vehicle"
+        )  # [[2, 384, 248, 288]*1]
+        pts_feat_inf = self.extract_pts_feat(
+            infrastructure_points, img_metas, points_view="infrastructure"
+        )  # [[2, 384, 248, 288]*1]
+
+        pts_feat_fused = self.pts_feature_fusion(
+            pts_feat_veh, pts_feat_inf, img_metas, mode="fusion"
+        )  # [[2, 384, 248, 288]*1]
+
+        # return pts_feat_fused
+
+        img_feat_fused = self.extract_img_feat_vimi(
+            img, img_metas
+        )  # [[2, 256, 288, 248]*1]
+
+        feat_fused = torch.cat(
+            [img_feat_fused[0].transpose(-1, -2), pts_feat_fused[0]], dim=1
+        )  # [2, 640, 248, 288]
+        feat_fused = [self.mod_fusion_weighted(feat_fused)]  # [[2, 384, 248, 288]*1]
+
+        return feat_fused
+
     def forward_train(
         self,
         img,
@@ -805,30 +832,11 @@ class VIMI_Fusion(VIMI):
         Returns:
             dict: Losses of each branch.
         """
-        for ii in range(len(infrastructure_points)):
-            infrastructure_points[ii][:, 3] = 255 * infrastructure_points[ii][:, 3]
+        feat_fused = self.get_fused_img_pts_feat(
+            img, img_metas, points, infrastructure_points
+        )
 
-        pts_feat_veh = self.extract_pts_feat(
-            points, img_metas, points_view="vehicle"
-        )  # [[2, 384, 248, 288]*1]
-        pts_feat_inf = self.extract_pts_feat(
-            infrastructure_points, img_metas, points_view="infrastructure"
-        )  # [[2, 384, 248, 288]*1]
-
-        pts_feat_fused = self.pts_feature_fusion(
-            pts_feat_veh, pts_feat_inf, img_metas, mode="fusion"
-        )  # [[2, 384, 248, 288]*1]
-
-        img_feat_fused = self.extract_img_feat_vimi(
-            img, img_metas
-        )  # [[2, 256, 288, 248]*1]
-
-        feat_fused = torch.cat(
-            [img_feat_fused[0], pts_feat_fused[0].transpose(-1, -2)], dim=1
-        )  # [2, 640, 288, 248]
-        feat_fused = self.mod_fusion_weighted(feat_fused)
-
-        out = self.bbox_head([feat_fused])
+        out = self.bbox_head(feat_fused)
         losses = self.bbox_head.loss(*out, gt_bboxes_3d, gt_labels_3d, img_metas)
         return losses
 
@@ -853,29 +861,11 @@ class VIMI_Fusion(VIMI):
 
     def simple_test(self, img, points, img_metas, infrastructure_points, rescale=False):
         """Test function without augmentaiton."""
-        for ii in range(len(infrastructure_points)):
-            infrastructure_points[ii][:, 3] = 255 * infrastructure_points[ii][:, 3]
-        pts_feat_veh = self.extract_pts_feat(
-            points, img_metas, points_view="vehicle"
-        )  # [[2, 384, 248, 288]*1]
-        pts_feat_inf = self.extract_pts_feat(
-            infrastructure_points, img_metas, points_view="infrastructure"
-        )  # [[2, 384, 248, 288]*1]
-        pts_feat_fused = self.pts_feature_fusion(
-            pts_feat_veh, pts_feat_inf, img_metas, mode="fusion"
-        )  # [[2, 384, 248, 288]*1]
+        feat_fused = self.get_fused_img_pts_feat(
+            img, img_metas, points, infrastructure_points
+        )
 
-        img_feat_fused = self.extract_img_feat_vimi(
-            img, img_metas
-        )  # [[2, 256, 288, 248]*1]
-
-        feat_fused = torch.cat(
-            [img_feat_fused[0], pts_feat_fused[0].permute(0, 1, 3, 2)], dim=1
-        )  # [2, 640, 288, 248]
-
-        feat_fused = self.mod_fusion_weighted(feat_fused)
-
-        out = self.bbox_head([feat_fused])
+        out = self.bbox_head(feat_fused)
 
         bbox_list = self.bbox_head.get_bboxes(*out, img_metas, rescale=rescale)
         bbox_results = [

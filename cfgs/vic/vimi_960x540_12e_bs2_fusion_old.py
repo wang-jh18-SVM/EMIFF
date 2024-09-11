@@ -21,11 +21,34 @@ img_norm_cfg = dict(
 img_scale = (960, 540)
 img_resize_scale = [(912, 513), (1008, 567)]
 
-z_center_car = -2.66
-
 _dim_ = 64
 model = dict(
-    type="VIMI_Lidar",
+    type="VIMI_Fusion",
+    img_backbone=dict(
+        type="ResNet",
+        depth=50,
+        num_stages=4,
+        out_indices=(0, 1, 2, 3),
+        frozen_stages=1,
+        norm_cfg=dict(type="BN", requires_grad=False),
+        norm_eval=True,
+        init_cfg=dict(type="Pretrained", checkpoint="torchvision://resnet50"),
+        style="pytorch",
+    ),
+    img_neck=dict(
+        type="FPN", in_channels=[256, 512, 1024, 2048], out_channels=_dim_, num_outs=4
+    ),
+    img_neck_dcn=dict(
+        type="DeformConv",
+        chi=_dim_,
+        cho=_dim_,
+        kernel_size=3,
+        stride=1,
+        padding=1,
+        dilation=1,
+        deform_groups=1,
+    ),
+    img_neck_3d=dict(type="OutdoorImVoxelNeck", in_channels=_dim_, out_channels=256),
     pts_voxel_layer=dict(
         max_num_points=100,
         point_cloud_range=point_cloud_range,
@@ -59,24 +82,15 @@ model = dict(
     bbox_head=dict(
         type="Anchor3DHead",
         num_classes=1,
-        in_channels=384,
-        feat_channels=384,
+        in_channels=256,
+        feat_channels=256,
         use_direction_classifier=True,
         anchor_generator=dict(
-            type="Anchor3DRangeGenerator",
-            ranges=[
-                [
-                    point_cloud_range[0],
-                    point_cloud_range[1],
-                    z_center_car,
-                    point_cloud_range[3],
-                    point_cloud_range[4],
-                    z_center_car,
-                ],
-            ],
-            sizes=[[1.6, 3.9, 1.56]],
+            type="AlignedAnchor3DRangeGenerator",
+            ranges=[[0, -39.68, -1.78, 92.16, 39.68, -1.78]],
+            sizes=[[3.9, 1.6, 1.56]],
             rotations=[0, 1.57],
-            reshape_out=False,
+            reshape_out=True,
         ),
         diff_rad_by_sin=True,
         bbox_coder=dict(type="DeltaXYZWLHRBBoxCoder"),
@@ -90,11 +104,11 @@ model = dict(
     compress_ratio=64,
     s_compress_ratio=1,
     se_reduction_ratio=1,
-    # anchor_generator=dict(
-    #     type="AlignedAnchor3DRangeGenerator",
-    #     ranges=[[0, -39.68, -3.08, 92.16, 39.68, 0.76]],
-    #     rotations=[0.0],
-    # ),
+    anchor_generator=dict(
+        type="AlignedAnchor3DRangeGenerator",
+        ranges=[[0, -39.68, -3.08, 92.16, 39.68, 0.76]],
+        rotations=[0.0],
+    ),
     train_cfg=dict(
         assigner=dict(
             type="MaxIoUAssigner",
@@ -112,10 +126,10 @@ model = dict(
         use_rotate_nms=True,
         nms_across_levels=False,
         nms_thr=0.01,
-        score_thr=0.2,
+        score_thr=0.1,
         min_bbox_size=0,
-        nms_pre=1000,
-        max_num=300,
+        nms_pre=100,
+        max_num=50,
     ),
 )
 
@@ -282,7 +296,7 @@ eval_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=2,
+    samples_per_gpu=1,
     workers_per_gpu=4,
     train=dict(
         type="RepeatDataset",
@@ -336,7 +350,7 @@ optimizer = dict(
     weight_decay=0.0001,
     paramwise_cfg=dict(
         custom_keys=dict(
-            # backbone=dict(lr_mult=0.1, decay_mult=1.0),
+            img_backbone=dict(lr_mult=0.1, decay_mult=1.0),
             pts_voxel_layer=dict(lr_mult=pts_lr_mult),
             pts_voxel_encoder=dict(lr_mult=pts_lr_mult),
             pts_backbone=dict(lr_mult=pts_lr_mult),
@@ -348,19 +362,19 @@ optimizer_config = dict(grad_clip=dict(max_norm=35.0, norm_type=2))
 lr_config = dict(policy="step", step=[8, 11])
 total_epochs = 12
 
-checkpoint_config = dict(interval=1, max_keep_ckpts=1)
+checkpoint_config = dict(interval=1, max_keep_ckpts=2)
 
-run_name = f"0910_EMIFF_Lidar_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x2_lr{optimizer['lr']}_pts_lr{pts_lr_mult}"
+run_name = f"0910_EMIFF_Fusion_{total_epochs}e_bs{data['samples_per_gpu']}x1_lr{optimizer['lr']}"
 
 log_config = dict(
     interval=50,
     hooks=[
         dict(type="TextLoggerHook"),
         dict(type="TensorboardLoggerHook"),
-        dict(
-            type="WandbLoggerHook",
-            init_kwargs=dict(project="VIMI", name=run_name),
-        ),
+        # dict(
+        #     type="WandbLoggerHook",
+        #     init_kwargs=dict(project="VIMI", name=run_name),
+        # ),
     ],
 )
 evaluation = dict(interval=1, start=1, save_best="car_3d_0.5", rule="greater")

@@ -317,7 +317,7 @@ class DAIR_VIC_Dataset(KittiDataset):
         # from IPython import embed
         # embed(header='DAIR_V2X evaluate')
 
-        logger.info("Enter DAIR_VIC_Dataset.evaluate")
+        print("Enter DAIR_VIC_Dataset.evaluate")
         ap_dict = dict()
         pred_classes = ["car"]
         evaluator = Evaluator(pred_classes)

@@ -5,14 +5,14 @@ input_modality = dict(use_lidar=True, use_camera=True)
 point_cloud_range = [0, -39.68, -3, 92.16, 39.68, 1]
 extended_range = [0, -40.0, -3, 100, 40.0, 1]
 img_voxel_size = [0.32, 0.32, 0.33]
-length = int((point_cloud_range[3] - point_cloud_range[0]) / img_voxel_size[0]) # 288
-width = int((point_cloud_range[4] - point_cloud_range[1]) / img_voxel_size[1]) # 248
+length = int((point_cloud_range[3] - point_cloud_range[0]) / img_voxel_size[0])  # 288
+width = int((point_cloud_range[4] - point_cloud_range[1]) / img_voxel_size[1])  # 248
 height = int((point_cloud_range[5] - point_cloud_range[2]) / img_voxel_size[2])
 img_output_shape = [width, length, height]
 
 pts_voxel_size = [0.16, 0.16, 4]
-l = int((point_cloud_range[3] - point_cloud_range[0]) / pts_voxel_size[0]) # 576
-h = int((point_cloud_range[4] - point_cloud_range[1]) / pts_voxel_size[1]) # 496
+l = int((point_cloud_range[3] - point_cloud_range[0]) / pts_voxel_size[0])  # 576
+h = int((point_cloud_range[4] - point_cloud_range[1]) / pts_voxel_size[1])  # 496
 pts_output_shape = [h, l]
 
 img_norm_cfg = dict(
@@ -20,6 +20,8 @@ img_norm_cfg = dict(
 )
 img_scale = (960, 540)
 img_resize_scale = [(912, 513), (1008, 567)]
+
+z_center_car = -2.66
 
 _dim_ = 64
 model = dict(
@@ -82,15 +84,24 @@ model = dict(
     bbox_head=dict(
         type="Anchor3DHead",
         num_classes=1,
-        in_channels=256,
-        feat_channels=256,
+        in_channels=384,
+        feat_channels=384,
         use_direction_classifier=True,
         anchor_generator=dict(
-            type="AlignedAnchor3DRangeGenerator",
-            ranges=[[0, -39.68, -1.78, 92.16, 39.68, -1.78]],
-            sizes=[[3.9, 1.6, 1.56]],
+            type="Anchor3DRangeGenerator",
+            ranges=[
+                [
+                    point_cloud_range[0],
+                    point_cloud_range[1],
+                    z_center_car,
+                    point_cloud_range[3],
+                    point_cloud_range[4],
+                    z_center_car,
+                ],
+            ],
+            sizes=[[1.6, 3.9, 1.56]],
             rotations=[0, 1.57],
-            reshape_out=True,
+            reshape_out=False,
         ),
         diff_rad_by_sin=True,
         bbox_coder=dict(type="DeltaXYZWLHRBBoxCoder"),
@@ -126,10 +137,10 @@ model = dict(
         use_rotate_nms=True,
         nms_across_levels=False,
         nms_thr=0.01,
-        score_thr=0.1,
+        score_thr=0.2,
         min_bbox_size=0,
-        nms_pre=100,
-        max_num=50,
+        nms_pre=1000,
+        max_num=300,
     ),
 )
 
@@ -344,13 +355,14 @@ data = dict(
 )
 
 pts_lr_mult = 3
+img_lr_mult = 0.3
 optimizer = dict(
     type="AdamW",
     lr=1e-4,
     weight_decay=0.0001,
     paramwise_cfg=dict(
         custom_keys=dict(
-            # backbone=dict(lr_mult=0.1, decay_mult=1.0),
+            img_backbone=dict(lr_mult=img_lr_mult, decay_mult=1.0),
             pts_voxel_layer=dict(lr_mult=pts_lr_mult),
             pts_voxel_encoder=dict(lr_mult=pts_lr_mult),
             pts_backbone=dict(lr_mult=pts_lr_mult),
@@ -362,9 +374,9 @@ optimizer_config = dict(grad_clip=dict(max_norm=35.0, norm_type=2))
 lr_config = dict(policy="step", step=[8, 11])
 total_epochs = 12
 
-checkpoint_config = dict(interval=1, max_keep_ckpts=1)
+checkpoint_config = dict(interval=1, max_keep_ckpts=2)
 
-run_name = f"0909_EMIFF_Fusion_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}_pts_lr{pts_lr_mult}"
+run_name = f"0911_EMIFF_Fusion_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}_pts_lr{pts_lr_mult}_imgt_{img_lr_mult}"
 
 log_config = dict(
     interval=50,
