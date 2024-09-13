@@ -8,7 +8,7 @@ img_voxel_size = [0.32, 0.32, 0.33]
 length = int((point_cloud_range[3] - point_cloud_range[0]) / img_voxel_size[0])  # 288
 width = int((point_cloud_range[4] - point_cloud_range[1]) / img_voxel_size[1])  # 248
 height = int((point_cloud_range[5] - point_cloud_range[2]) / img_voxel_size[2])
-img_output_shape = [width, length, height]
+img_output_shape = [length, width, height]
 
 pts_voxel_size = [0.16, 0.16, 4]
 l = int((point_cloud_range[3] - point_cloud_range[0]) / pts_voxel_size[0])  # 576
@@ -117,7 +117,16 @@ model = dict(
     se_reduction_ratio=1,
     anchor_generator=dict(
         type="AlignedAnchor3DRangeGenerator",
-        ranges=[[0, -39.68, -3.08, 92.16, 39.68, 0.76]],
+        ranges=[
+            [
+                point_cloud_range[0],
+                point_cloud_range[1],
+                -3.08,
+                point_cloud_range[3],
+                point_cloud_range[4],
+                0.76,
+            ]
+        ],
         rotations=[0.0],
     ),
     train_cfg=dict(
@@ -362,6 +371,7 @@ optimizer = dict(
     weight_decay=0.0001,
     paramwise_cfg=dict(
         custom_keys=dict(
+            backbone=dict(lr_mult=img_lr_mult, decay_mult=1.0),
             img_backbone=dict(lr_mult=img_lr_mult, decay_mult=1.0),
             pts_voxel_layer=dict(lr_mult=pts_lr_mult),
             pts_voxel_encoder=dict(lr_mult=pts_lr_mult),
@@ -376,7 +386,7 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=2)
 
-run_name = f"0911_EMIFF_Fusion_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}_pts_lr{pts_lr_mult}_imgt_{img_lr_mult}"
+run_name = f"0913_EMIFF_Fusion_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}_pts_lr{pts_lr_mult}_img_lr_{img_lr_mult}_imgoutT"
 
 log_config = dict(
     interval=50,

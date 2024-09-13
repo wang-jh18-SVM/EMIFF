@@ -379,9 +379,30 @@ class VIMI(BaseDetector):
         x_stack = torch.stack((x_v, x_i), dim=0)
         x = torch.mean(x_stack, dim=0)
 
+        # # save the feature map for visualization
+        # import numpy as np
+        # import os
+        # save_dir = "show_dir/feature_0913"
+        # veh_id = img_metas[0]["sample_idx"]
+        # if not os.path.exists(save_dir):
+        #     os.makedirs(save_dir)
+        # file_name = os.path.join(save_dir, f"{veh_id}_fusion_camera_voxel.npy")
+        # print(f"Saving feature map to {file_name}")
+        # np.save(file_name, x.cpu().detach().numpy())
+        # # import pdb
+        # # pdb.set_trace()
+
         # x [bs,C, X, Y, Z] [2,64,248,288,12]
         x = self.neck_3d(x)
         # x [[2,256,288,248]*1]
+
+        # # save the feature map for visualization
+        # file_name = os.path.join(save_dir, f"{veh_id}_fusion_camera_bev.npy")
+        # print(f"Saving feature map to {file_name}")
+        # np.save(file_name, x[0].cpu().detach().numpy())
+        # # import pdb
+        # # pdb.set_trace()
+
         return x
 
     def forward_train(self, img, img_metas, gt_bboxes_3d, gt_labels_3d, **kwargs):
@@ -793,16 +814,39 @@ class VIMI_Fusion(VIMI):
             pts_feat_veh, pts_feat_inf, img_metas, mode="fusion"
         )  # [[2, 384, 248, 288]*1]
 
+        # # save the feature map for visualization
+        # import numpy as np
+        # import os
+        # save_dir = "show_dir/feature_0913"
+        # veh_id = img_metas[0]["sample_idx"]
+        # if not os.path.exists(save_dir):
+        #     os.makedirs(save_dir)
+        # file_name = os.path.join(save_dir, f"{veh_id}_fusion_lidar.npy")
+        # print(f"Saving feature map to {file_name}")
+        # np.save(file_name, pts_feat_fused[0].cpu().detach().numpy())
+
         # return pts_feat_fused
 
         img_feat_fused = self.extract_img_feat_vimi(
             img, img_metas
         )  # [[2, 256, 288, 248]*1]
 
+        # # save the feature map for visualization
+        # file_name = os.path.join(save_dir, f"{veh_id}_fusion_camera.npy")
+        # print(f"Saving feature map to {file_name}")
+        # np.save(file_name, img_feat_fused[0].cpu().detach().numpy())
+
+        # return [img_feat_fused[0].transpose(-1, -2)] # [[2, 256, 248, 288]*1]
+
         feat_fused = torch.cat(
-            [img_feat_fused[0].transpose(-1, -2), pts_feat_fused[0]], dim=1
+            [img_feat_fused[0], pts_feat_fused[0]], dim=1
         )  # [2, 640, 248, 288]
         feat_fused = [self.mod_fusion_weighted(feat_fused)]  # [[2, 384, 248, 288]*1]
+
+        # # save the feature map for visualization
+        # file_name = os.path.join(save_dir, f"{veh_id}_fusion_bev.npy")
+        # print(f"Saving feature map to {file_name}")
+        # np.save(file_name, feat_fused[0].cpu().detach().numpy())
 
         return feat_fused
 
@@ -814,7 +858,7 @@ class VIMI_Fusion(VIMI):
         gt_labels_3d,
         points,
         infrastructure_points,
-        **kwargs
+        **kwargs,
     ):
         """Training forward function.
 

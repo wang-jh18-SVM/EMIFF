@@ -8,7 +8,7 @@ voxel_size = [0.32, 0.32, 0.33]
 length = int((point_cloud_range[3] - point_cloud_range[0]) / voxel_size[0])
 width = int((point_cloud_range[4] - point_cloud_range[1]) / voxel_size[1])
 height = int((point_cloud_range[5] - point_cloud_range[2]) / voxel_size[2])
-output_shape = [width, length, height]
+output_shape = [length, width, height]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
 )
@@ -51,7 +51,16 @@ model = dict(
         use_direction_classifier=True,
         anchor_generator=dict(
             type="AlignedAnchor3DRangeGenerator",
-            ranges=[[0, -39.68, -1.78, 92.16, 39.68, -1.78]],
+            ranges=[
+                [
+                    point_cloud_range[0],
+                    point_cloud_range[1],
+                    -1.78,
+                    point_cloud_range[3],
+                    point_cloud_range[4],
+                    -1.78,
+                ]
+            ],
             sizes=[[3.9, 1.6, 1.56]],
             rotations=[0, 1.57],
             reshape_out=True,
@@ -70,7 +79,16 @@ model = dict(
     se_reduction_ratio=1,
     anchor_generator=dict(
         type="AlignedAnchor3DRangeGenerator",
-        ranges=[[0, -39.68, -3.08, 92.16, 39.68, 0.76]],
+        ranges=[
+            [
+                point_cloud_range[0],
+                point_cloud_range[1],
+                -3.08,
+                point_cloud_range[3],
+                point_cloud_range[4],
+                0.76,
+            ]
+        ],
         rotations=[0.0],
     ),
     train_cfg=dict(
@@ -153,15 +171,15 @@ eval_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=4,
+    samples_per_gpu=1,
+    workers_per_gpu=2,
     train=dict(
         type="RepeatDataset",
         times=3,
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file=data_root + "dair_coop1214_infos_train.pkl",
+            ann_file=data_root + "dair_vic_kitti_format_infos_train.pkl",
             split="training",
             pts_prefix="velodyne_reduced",
             pipeline=train_pipeline,
@@ -173,7 +191,7 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
@@ -184,7 +202,7 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + "dair_coop1214_infos_val.pkl",
+        ann_file=data_root + "dair_vic_kitti_format_infos_val.pkl",
         split="training",
         pts_prefix="velodyne_reduced",
         pipeline=test_pipeline,
@@ -206,17 +224,17 @@ total_epochs = 12
 
 checkpoint_config = dict(interval=1, max_keep_ckpts=1)
 
-run_name = f"0908_EMIFF_coop1214_{img_scale[0]}x{img_scale[1]}_{total_epochs}e_bs{data['samples_per_gpu']}x1_lr{optimizer['lr']}"
-wandb_init_dict = dict(
-    type="WandbLoggerHook",
-    init_kwargs=dict(project="VIMI", name=run_name),
-)
+run_name = f"0912_EMIFF_C_{total_epochs}e_bs{data['samples_per_gpu']}x4_lr{optimizer['lr']}_outshapeT"
+
 log_config = dict(
     interval=50,
     hooks=[
         dict(type="TextLoggerHook"),
         dict(type="TensorboardLoggerHook"),
-        wandb_init_dict,
+        dict(
+            type="WandbLoggerHook",
+            init_kwargs=dict(project="VIMI", name=run_name),
+        ),
     ],
 )
 evaluation = dict(interval=1, start=1, save_best="car_3d_0.5", rule="greater")
